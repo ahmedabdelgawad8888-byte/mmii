@@ -1,7 +1,4 @@
-import { BookOpenCheck, Megaphone, Plus } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-
+import { AcademyToolbar } from "./_components/academy-toolbar";
 import { AssignmentStatus } from "./_components/assignment-status";
 import { ClassSchedule } from "./_components/class-schedule";
 import { KpiCards } from "./_components/kpi-cards";
@@ -19,20 +16,7 @@ export default function Page() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:w-fit">
-          <Button size="sm">
-            <Megaphone />
-            New Announcement
-          </Button>
-          <Button size="sm" variant="outline">
-            <BookOpenCheck />
-            Gradebook
-          </Button>
-          <Button size="sm" variant="outline">
-            <Plus />
-            Add Assignment
-          </Button>
-        </div>
+        <AcademyToolbar />
       </div>
 
       <KpiCards />

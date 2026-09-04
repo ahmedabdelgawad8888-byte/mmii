@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { cn } from "cn";
 import { format } from "date-fns/format";
 import {
@@ -20,6 +22,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { SimpleIcon } from "@/components/simple-icon";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -38,7 +41,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import type { Mail } from "./data";
-import { useMail } from "./use-mail";
+import { useMail, useMailStore } from "./use-mail";
 
 interface MailDisplayProps {
   mail: Mail | null;
@@ -47,11 +50,56 @@ interface MailDisplayProps {
 
 export function MailView({ mail, onClose }: MailDisplayProps) {
   const [, setMail] = useMail();
+  const navigateMail = useMailStore((s) => s.navigateMail);
+  const togglePinMail = useMailStore((s) => s.togglePinMail);
+  const archiveMail = useMailStore((s) => s.archiveMail);
+  const deleteMail = useMailStore((s) => s.deleteMail);
+  const markMailUnread = useMailStore((s) => s.markMailUnread);
+  const sendReply = useMailStore((s) => s.sendReply);
+
+  const [replyText, setReplyText] = React.useState("");
+  const replyInputRef = React.useRef<HTMLInputElement>(null);
 
   function handleClose() {
     setMail({ selected: null });
     onClose?.();
   }
+
+  const handleSendReply = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!mail || !replyText.trim()) return;
+    sendReply(mail.id, replyText.trim());
+    toast.success(`Reply sent to ${mail.from.name}`);
+    setReplyText("");
+  };
+
+  const handleArchive = () => {
+    if (!mail) return;
+    archiveMail(mail.id);
+    toast.success("Thread archived", {
+      action: {
+        label: "Undo",
+        onClick: () => toast.info("Archive undone"),
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!mail) return;
+    deleteMail(mail.id);
+    toast.success("Moved thread to trash", {
+      action: {
+        label: "Undo",
+        onClick: () => toast.info("Restored from trash"),
+      },
+    });
+  };
+
+  const handlePin = () => {
+    if (!mail) return;
+    togglePinMail(mail.id);
+    toast.info(mail.isPinned ? "Thread unpinned" : "Thread pinned to top");
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 px-2 py-3">
@@ -69,7 +117,12 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
           <div className="flex items-center gap-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Previous message">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Previous message"
+                  onClick={() => navigateMail("prev")}
+                >
                   <ChevronLeft />
                 </Button>
               </TooltipTrigger>
@@ -77,7 +130,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Next message">
+                <Button variant="ghost" size="icon-sm" aria-label="Next message" onClick={() => navigateMail("next")}>
                   <ChevronRight />
                 </Button>
               </TooltipTrigger>
@@ -89,15 +142,21 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
         <div className="ml-auto flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Pin thread">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Pin thread"
+                onClick={handlePin}
+                className={cn(mail?.isPinned && "text-primary")}
+              >
                 <Pin />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Pin thread</TooltipContent>
+            <TooltipContent>{mail?.isPinned ? "Unpin thread" : "Pin thread"}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Archive">
+              <Button variant="ghost" size="icon-sm" aria-label="Archive" onClick={handleArchive}>
                 <Archive />
               </Button>
             </TooltipTrigger>
@@ -105,7 +164,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Reply">
+              <Button variant="ghost" size="icon-sm" aria-label="Reply" onClick={() => replyInputRef.current?.focus()}>
                 <Reply />
               </Button>
             </TooltipTrigger>
@@ -122,22 +181,41 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      replyInputRef.current?.focus();
+                      setReplyText(`Cc all: `);
+                    }}
+                  >
                     <ReplyAll />
                     Reply all
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      toast.info(`Forward draft created for "${mail?.subject}"`);
+                    }}
+                  >
                     <Forward />
                     Forward
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      if (!mail) return;
+                      markMailUnread(mail.id);
+                      toast.info("Marked as unread");
+                    }}
+                  >
                     <MailOpen />
                     Mark as unread
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      toast.success(`Label "Work" added to email`);
+                    }}
+                  >
                     <Tag />
                     Add label
                   </DropdownMenuItem>
@@ -149,7 +227,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
           <Separator className="h-4 data-vertical:self-center" orientation="vertical" />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Move to trash">
+              <Button variant="ghost" size="icon-sm" aria-label="Move to trash" onClick={handleDelete}>
                 <Trash2 className="text-destructive" />
               </Button>
             </TooltipTrigger>
@@ -222,7 +300,12 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
                   <CollapsibleContent>
                     <div className="flex flex-wrap gap-2">
                       {mail.attachments.map((attachment) => (
-                        <Button size="xs" variant="secondary" key={attachment.id}>
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          key={attachment.id}
+                          onClick={() => toast.success(`Downloading ${attachment.name}...`)}
+                        >
                           <SimpleIcon icon={attachment.icon} className="size-3 fill-current" />
                           <span className="font-normal">{attachment.name}</span>
                           <span className="font-normal text-muted-foreground">{attachment.size}</span>
@@ -238,26 +321,45 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
 
             <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm">{mail.body}</div>
 
-            <div className="mt-auto flex flex-col gap-3">
+            <form onSubmit={handleSendReply} className="mt-auto flex flex-col gap-3">
               <Separator />
               <InputGroup>
                 <InputGroupAddon align="inline-start">
                   <Reply />
                 </InputGroupAddon>
-                <InputGroupInput className="text-xs" placeholder={`Reply ${mail.from.name}...`} />
+                <InputGroupInput
+                  ref={replyInputRef}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="text-xs"
+                  placeholder={`Reply to ${mail.from.name}...`}
+                />
                 <InputGroupAddon className="gap-1" align="inline-end">
-                  <InputGroupButton variant="ghost">
+                  <InputGroupButton
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setReplyText((prev) => `${prev} 👍`)}
+                    aria-label="Add emoji"
+                  >
                     <Smile />
                   </InputGroupButton>
-                  <InputGroupButton variant="ghost">
+                  <InputGroupButton
+                    variant="ghost"
+                    type="button"
+                    onClick={() => {
+                      setReplyText((prev) => `${prev} [Attached file: snippet.ts]`);
+                      toast.info("Attached snippet.ts");
+                    }}
+                    aria-label="Attach file"
+                  >
                     <Paperclip />
                   </InputGroupButton>
-                  <InputGroupButton variant="ghost">
+                  <InputGroupButton variant="ghost" type="submit" disabled={!replyText.trim()} aria-label="Send reply">
                     <Send />
                   </InputGroupButton>
                 </InputGroupAddon>
               </InputGroup>
-            </div>
+            </form>
           </div>
         ) : (
           <div className="grid h-full place-items-center text-muted-foreground text-sm">No email selected</div>

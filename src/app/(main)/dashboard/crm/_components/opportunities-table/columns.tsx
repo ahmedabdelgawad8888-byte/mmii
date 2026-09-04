@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { cn } from "cn";
 import { Pencil } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,14 +118,19 @@ export const opportunitiesColumns: ColumnDef<DataTableFeatures, OpportunityRow>[
   {
     id: "actions",
     header: () => <div className="text-right">Edit</div>,
-    cell: () => (
+    cell: ({ row }) => (
       <div className="text-right">
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 rounded-full text-muted-foreground hover:bg-transparent focus-visible:bg-transparent"
+          className="size-8 cursor-pointer rounded-full text-muted-foreground hover:bg-muted"
+          onClick={() =>
+            toast.info(`Editing opportunity #${row.original.id} (${row.original.account})`, {
+              description: `Current stage: ${row.original.stage} · Value: ${row.original.value}`,
+            })
+          }
         >
-          <Pencil />
+          <Pencil className="size-3.5" />
           <span className="sr-only">Edit opportunity</span>
         </Button>
       </div>

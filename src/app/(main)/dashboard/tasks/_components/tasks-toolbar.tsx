@@ -1,7 +1,8 @@
 "use client";
 import type { ReactTable, RowData } from "@tanstack/react-table";
 import { cn } from "cn";
-import { Settings2, X } from "lucide-react";
+import { Download, Settings2, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +59,16 @@ export function TasksToolbar<TData extends RowData>({ table }: TasksToolbarProps
           </Button>
         )}
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex"
+          onClick={() => toast.success("Tasks exported to CSV")}
+        >
+          <Download data-icon="inline-start" className="size-4" />
+          Export
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

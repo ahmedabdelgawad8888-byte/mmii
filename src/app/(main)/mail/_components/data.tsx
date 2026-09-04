@@ -3,7 +3,7 @@ import { siFigma, siGoogledocs, siGooglephotos } from "simple-icons";
 
 const arhamKhan = {
   name: "Arham Khan",
-  email: "hello@arhamkhnz.com",
+  email: "hello@trygc.com",
 };
 
 const weblabsStudio = {
@@ -79,8 +79,8 @@ export const mails: Mail[] = [
     labels: ["meeting", "work", "important"],
     attachments: [
       {
-        id: "studio-admin-fig",
-        name: "studio-admin.fig",
+        id: "trygc-crm-hub-fig",
+        name: "trygc-crm-hub.fig",
         size: "21 MB",
         icon: siFigma,
       },
@@ -471,7 +471,7 @@ export const accounts = [
   {
     id: 1,
     label: "Arham Khan",
-    email: "hello@arhamkhnz.com",
+    email: "hello@trygc.com",
   },
   {
     id: 2,

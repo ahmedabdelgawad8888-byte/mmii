@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Download, Printer } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -24,6 +25,11 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceFormValues }) {
     width: INVOICE_PAPER_WIDTH,
   });
 
+  function handleDownloadPDF() {
+    toast.success(`Preparing PDF for Invoice ${invoice.referenceNumber || "INV"}`);
+    window.print();
+  }
+
   return (
     <>
       <PrintInvoice invoice={invoice} />
@@ -35,7 +41,7 @@ export function InvoicePreview({ invoice }: { invoice: InvoiceFormValues }) {
               <Printer data-icon="inline-start" />
               Print
             </Button>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" onClick={handleDownloadPDF}>
               <Download data-icon="inline-start" />
               Download PDF
             </Button>

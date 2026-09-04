@@ -1,6 +1,6 @@
-# Contributing to Studio Admin
+# Contributing to Trygc CRM Hub
 
-Thanks for showing interest in improving **Studio Admin** (repo: `next-shadcn-admin-dashboard`).  
+Thanks for showing interest in improving **Trygc CRM Hub**.
 This guide will help you set up your environment and understand how to contribute.
 
 ---

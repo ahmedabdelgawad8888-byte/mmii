@@ -1,5 +1,9 @@
+"use client";
+
 import { cn } from "cn";
 import {
+  ArrowDown,
+  ArrowUp,
   ArrowUpDown,
   Bell,
   ChevronDown,
@@ -15,6 +19,7 @@ import {
   SquareTerminal,
   Terminal,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { SimpleIcon } from "@/components/simple-icon";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +37,47 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import type { InfrastructureEnvironment, InfrastructureGroup } from "./infrastructure-data";
 
-export function ProjectEnvironments({ group }: { group: InfrastructureGroup }) {
+interface ProjectEnvironmentsProps {
+  group: InfrastructureGroup;
+  onAddEnvironment?: (groupName: string) => void;
+  onRestartRow?: (domain: string) => void;
+  sortAsc?: boolean | null;
+  onToggleSort?: () => void;
+}
+
+export function ProjectEnvironments({
+  group,
+  onAddEnvironment,
+  onRestartRow,
+  sortAsc,
+  onToggleSort,
+}: ProjectEnvironmentsProps) {
+  const handleGroupAction = (action: string) => {
+    switch (action) {
+      case "logs":
+        toast.info(`Recent activity for ${group.name}:\n• Deployment succeeded (10m ago)\n• Health checks passing`);
+        break;
+      case "console":
+        toast.info(`Opening web terminal for cluster [${group.name}]... Connected.`);
+        break;
+      case "settings":
+        toast.info(`Opening project settings for ${group.name}...`);
+        break;
+      case "sync":
+        toast.success(`Synchronized ${group.name} with cluster registry`);
+        break;
+      case "alerts":
+        toast.info(`Alert rules active for ${group.name}: 0 triggering, 4 healthy.`);
+        break;
+      case "copy-id": {
+        const id = `prj_${group.name.toLowerCase().replace(/\s+/g, "_")}`;
+        navigator.clipboard?.writeText(id);
+        toast.success(`Project ID copied: ${id}`);
+        break;
+      }
+    }
+  };
+
   return (
     <Collapsible
       defaultOpen
@@ -52,44 +97,44 @@ export function ProjectEnvironments({ group }: { group: InfrastructureGroup }) {
           </Button>
         </CollapsibleTrigger>
         <div className="flex w-full items-center justify-between gap-2 sm:ml-auto sm:w-auto sm:justify-end">
-          <Button variant="ghost" size="sm" className="-ml-1.5 sm:ml-0">
+          <Button variant="ghost" size="sm" className="-ml-1.5 sm:ml-0" onClick={() => onAddEnvironment?.(group.name)}>
             <Plus data-icon="inline-start" />
             Add Environment
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon-sm">
+              <Button variant="outline" size="icon-sm" aria-label="Project actions">
                 <EllipsisVertical />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-40" align="end">
+            <DropdownMenuContent className="w-44" align="end">
               <DropdownMenuGroup>
                 {group.rows.length > 0 ? (
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleGroupAction("logs")}>
                     <FileText />
                     Activity Logs
                   </DropdownMenuItem>
                 ) : null}
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleGroupAction("console")}>
                   <Terminal />
                   Open Console
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleGroupAction("settings")}>
                   <Settings />
                   Project Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleGroupAction("sync")}>
                   <RefreshCw />
                   Sync Status
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleGroupAction("alerts")}>
                   <Bell />
                   Manage Alerts
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleGroupAction("copy-id")}>
                   <Copy />
                   Copy Project ID
                 </DropdownMenuItem>
@@ -100,13 +145,52 @@ export function ProjectEnvironments({ group }: { group: InfrastructureGroup }) {
       </div>
 
       <CollapsibleContent>
-        {group.rows.length > 0 ? <EnvironmentTable rows={group.rows} /> : <EmptyProjectState />}
+        {group.rows.length > 0 ? (
+          <EnvironmentTable
+            rows={group.rows}
+            onRestartRow={onRestartRow}
+            sortAsc={sortAsc}
+            onToggleSort={onToggleSort}
+          />
+        ) : (
+          <EmptyProjectState onAdd={() => onAddEnvironment?.(group.name)} />
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
-function EnvironmentTable({ rows }: { rows: InfrastructureEnvironment[] }) {
+function EnvironmentTable({
+  rows,
+  onRestartRow,
+  sortAsc,
+  onToggleSort,
+}: {
+  rows: InfrastructureEnvironment[];
+  onRestartRow?: (domain: string) => void;
+  sortAsc?: boolean | null;
+  onToggleSort?: () => void;
+}) {
+  const handleRowAction = (action: string, row: InfrastructureEnvironment) => {
+    switch (action) {
+      case "logs":
+        toast.info(`Streaming logs for ${row.domain} [HTTP 200 OK 42ms]`);
+        break;
+      case "console":
+        toast.info(`Opening SSH console on ${row.server} (${row.domain})...`);
+        break;
+      case "restart":
+        onRestartRow?.(row.domain);
+        break;
+      case "copy-url": {
+        const url = `https://${row.domain}`;
+        navigator.clipboard?.writeText(url);
+        toast.success(`Copied: ${url}`);
+        break;
+      }
+    }
+  };
+
   return (
     <div className="scrollbar-thin overflow-x-auto [scrollbar-color:var(--border)_transparent] **:data-[slot=table-container]:overflow-visible [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:h-1">
       <Table className="min-w-[1700px] table-fixed **:data-[slot='table-cell']:px-5 **:data-[slot='table-head']:px-5">
@@ -124,9 +208,14 @@ function EnvironmentTable({ rows }: { rows: InfrastructureEnvironment[] }) {
         <TableHeader className="bg-muted/50 [&_tr]:border-y">
           <TableRow>
             <TableHead className="font-medium">
-              <span className="inline-flex items-center gap-1">
-                Domain <ArrowUpDown className="size-4" />
-              </span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                onClick={onToggleSort}
+              >
+                Domain
+                <SortIcon sortAsc={sortAsc} />
+              </button>
             </TableHead>
             <TableHead>Platform</TableHead>
             <TableHead>Environment</TableHead>
@@ -138,13 +227,19 @@ function EnvironmentTable({ rows }: { rows: InfrastructureEnvironment[] }) {
             <TableHead />
           </TableRow>
         </TableHeader>
-        <TableBody className="**:data-[slot='table-row']:hover:bg-transparent">
+        <TableBody className="**:data-[slot='table-row']:hover:bg-muted/40">
           {rows.map((row) => (
             <TableRow key={row.domain}>
               <TableCell>
-                <span className="block truncate font-medium" title={row.domain}>
+                <a
+                  href={`https://${row.domain}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block truncate font-medium hover:underline"
+                  title={row.domain}
+                >
                   {row.domain}
-                </span>
+                </a>
               </TableCell>
               <TableCell>
                 <span className="flex items-center gap-2 font-medium text-muted-foreground">
@@ -215,28 +310,28 @@ function EnvironmentTable({ rows }: { rows: InfrastructureEnvironment[] }) {
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" className="-mr-2">
+                    <Button variant="ghost" size="icon-sm" className="-mr-2" aria-label="Actions for environment">
                       <SquareTerminal />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-40" align="end">
                     <DropdownMenuGroup>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleRowAction("logs", row)}>
                         <FileText />
                         View Logs
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleRowAction("console", row)}>
                         <Terminal />
                         Open Console
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleRowAction("restart", row)}>
                         <RefreshCw />
                         Restart
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleRowAction("copy-url", row)}>
                         <Copy />
                         Copy URL
                       </DropdownMenuItem>
@@ -284,13 +379,29 @@ function ResourceMeter({ label, value }: { label: string; value: number }) {
   );
 }
 
-function EmptyProjectState() {
+function EmptyProjectState({ onAdd }: { onAdd?: () => void }) {
   return (
-    <div className="flex min-h-24 items-center justify-center border-t bg-muted/50 p-4">
-      <div className="flex items-center gap-2">
+    <div className="flex min-h-24 flex-col items-center justify-center gap-2 border-t bg-muted/50 p-6">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <CircleDashed className="size-4" />
-        <p className="font-medium text-sm">No environments in this project</p>
+        <p className="font-medium text-sm">No environments configured in this project</p>
       </div>
+      {onAdd && (
+        <Button variant="outline" size="sm" onClick={onAdd} className="mt-1">
+          <Plus data-icon="inline-start" />
+          Add first environment
+        </Button>
+      )}
     </div>
   );
+}
+
+function SortIcon({ sortAsc }: { sortAsc?: boolean | null }) {
+  if (sortAsc === true) {
+    return <ArrowUp className="size-4 text-foreground" />;
+  }
+  if (sortAsc === false) {
+    return <ArrowDown className="size-4 text-foreground" />;
+  }
+  return <ArrowUpDown className="size-4 opacity-50" />;
 }

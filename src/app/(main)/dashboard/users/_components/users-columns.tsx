@@ -1,9 +1,12 @@
 "use client";
+import Link from "next/link";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { cn } from "cn";
 import { parse } from "date-fns";
 import { Check, Clock, MoreHorizontal, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -220,12 +223,34 @@ export const usersColumns: ColumnDef<DataTableFeatures, UserRow>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>View profile</DropdownMenuItem>
-            <DropdownMenuItem>Edit user</DropdownMenuItem>
-            <DropdownMenuItem>Manage team</DropdownMenuItem>
-            <DropdownMenuItem>Resend invite</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/profile">View profile</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info(`Editing settings for ${row.original.name}`)}>
+              Edit user
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => toast.info(`Managing team assignments for ${row.original.name} (${row.original.team})`)}
+            >
+              Manage team
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success(`Invitation email resent to ${row.original.email}`)}>
+              Resend invite
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">Deactivate user</DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() =>
+                toast.success(`Deactivated user ${row.original.name}`, {
+                  action: {
+                    label: "Undo",
+                    onClick: () => toast.info(`Reactivated user ${row.original.name}`),
+                  },
+                })
+              }
+            >
+              Deactivate user
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

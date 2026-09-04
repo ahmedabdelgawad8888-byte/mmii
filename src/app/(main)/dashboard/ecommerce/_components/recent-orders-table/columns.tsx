@@ -2,6 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { format, parseISO } from "date-fns";
 import { MoreHorizontal } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -185,7 +186,7 @@ export const recentOrdersColumns: ColumnDef<DataTableFeatures, OrderRow>[] = [
   {
     id: "actions",
     header: () => <div className="flex w-full justify-end">Actions</div>,
-    cell: () => (
+    cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex w-full justify-end">
@@ -194,12 +195,29 @@ export const recentOrdersColumns: ColumnDef<DataTableFeatures, OrderRow>[] = [
             </Button>
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent align="end" className="w-44">
           <DropdownMenuLabel>Order Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem>View order</DropdownMenuItem>
-            <DropdownMenuItem>Contact customer</DropdownMenuItem>
-            <DropdownMenuItem>Copy order ID</DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() =>
+                toast.info(
+                  `Order #${row.original.id}: ${row.original.items} for ${row.original.customer} (${row.original.total})`,
+                )
+              }
+            >
+              View order
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => toast.success(`Drafting message to ${row.original.customer}`)}>
+              Contact customer
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                navigator.clipboard?.writeText(row.original.id);
+                toast.success(`Order ID #${row.original.id} copied to clipboard`);
+              }}
+            >
+              Copy order ID
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>

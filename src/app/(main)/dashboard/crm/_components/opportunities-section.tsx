@@ -7,10 +7,19 @@ import {
   type PaginationState,
   useTable,
 } from "@tanstack/react-table";
-import { ChevronDownIcon, ListFilter } from "lucide-react";
+import { ChevronDownIcon, ListFilter, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Pagination,
   PaginationContent,
@@ -28,6 +38,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { dataTableFeatures } from "@/lib/data-table-features";
 
@@ -44,6 +55,16 @@ function preventPaginationNavigation(event: React.MouseEvent<HTMLAnchorElement>)
 }
 
 export function OpportunitiesSection() {
+  const [data, setData] = React.useState(opportunities);
+  const [dealDialogOpen, setDealDialogOpen] = React.useState(false);
+  const [newAccount, setNewAccount] = React.useState("");
+  const [newValue, setNewValue] = React.useState("");
+  const [newStage, setNewStage] = React.useState<"Proposal Sent" | "Discovery" | "Negotiation" | "Qualified">(
+    "Discovery",
+  );
+  const [newPriority, setNewPriority] = React.useState<"High" | "Medium" | "Low">("High");
+  const [newHealth, setNewHealth] = React.useState<"On Track" | "Needs Review" | "At Risk" | "On Hold">("On Track");
+
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility] = React.useState<ColumnVisibilityState>({});
@@ -53,9 +74,38 @@ export function OpportunitiesSection() {
     pageSize: 10,
   });
 
+  const handleCreateDeal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccount.trim()) return;
+
+    let priorityNumber = 2;
+    if (newPriority === "High") {
+      priorityNumber = 1;
+    } else if (newPriority === "Low") {
+      priorityNumber = 3;
+    }
+
+    const newDeal = {
+      id: `OPP-${Math.floor(1000 + Math.random() * 9000)}`,
+      account: newAccount.trim(),
+      value: newValue.startsWith("$") ? newValue : `$${newValue || "25,000"}`,
+      stage: newStage,
+      priority: priorityNumber,
+      health: newHealth,
+    };
+
+    setData((prev) => [newDeal, ...prev]);
+    toast.success(`Created opportunity for ${newDeal.account}!`, {
+      description: `Value: ${newDeal.value} · Stage: ${newDeal.stage}`,
+    });
+    setNewAccount("");
+    setNewValue("");
+    setDealDialogOpen(false);
+  };
+
   const table = useTable({
     features: dataTableFeatures,
-    data: opportunities,
+    data,
     columns: opportunitiesColumns,
     state: {
       rowSelection,
@@ -157,6 +207,10 @@ export function OpportunitiesSection() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button size="sm" onClick={() => setDealDialogOpen(true)} className="cursor-pointer">
+                <Plus data-icon="inline-start" />
+                New Deal
+              </Button>
             </div>
           </CardAction>
         </CardHeader>
@@ -251,6 +305,91 @@ export function OpportunitiesSection() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={dealDialogOpen} onOpenChange={setDealDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleCreateDeal}>
+            <DialogHeader>
+              <DialogTitle>Create Opportunity</DialogTitle>
+              <DialogDescription>Add a new deal to your pipeline tracker.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="opp-account">Account / Client Name</Label>
+                <Input
+                  id="opp-account"
+                  placeholder="e.g., Cyberdyne Systems"
+                  value={newAccount}
+                  onChange={(e) => setNewAccount(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="opp-value">Deal Value</Label>
+                  <Input
+                    id="opp-value"
+                    placeholder="e.g., $45,000"
+                    value={newValue}
+                    onChange={(e) => setNewValue(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="opp-stage">Stage</Label>
+                  <Select value={newStage} onValueChange={(val) => setNewStage(val as typeof newStage)}>
+                    <SelectTrigger id="opp-stage">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Discovery">Discovery</SelectItem>
+                      <SelectItem value="Qualified">Qualified</SelectItem>
+                      <SelectItem value="Proposal Sent">Proposal Sent</SelectItem>
+                      <SelectItem value="Negotiation">Negotiation</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="opp-priority">Priority</Label>
+                  <Select value={newPriority} onValueChange={(val) => setNewPriority(val as typeof newPriority)}>
+                    <SelectTrigger id="opp-priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="opp-health">Health</Label>
+                  <Select value={newHealth} onValueChange={(val) => setNewHealth(val as typeof newHealth)}>
+                    <SelectTrigger id="opp-health">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="On Track">On Track</SelectItem>
+                      <SelectItem value="Needs Review">Needs Review</SelectItem>
+                      <SelectItem value="At Risk">At Risk</SelectItem>
+                      <SelectItem value="On Hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDealDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!newAccount.trim()}>
+                Save Opportunity
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

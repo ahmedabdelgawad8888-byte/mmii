@@ -12,20 +12,30 @@ import { ChatConversationList } from "./chat-conversation-list";
 import { ChatProfileDetails } from "./chat-profile-details";
 import { ChatThread } from "./chat-thread";
 import type { Conversation } from "./data";
-import { useChat } from "./use-chat";
+import { useChat, useChatStore } from "./use-chat";
 
 interface ChatProps {
   conversations: Conversation[];
 }
 
-export function Chat({ conversations }: ChatProps) {
+export function Chat({ conversations: initialConversations }: ChatProps) {
   const [chat] = useChat();
+  const storeConversations = useChatStore((s) => s.conversations);
+  const conversations = storeConversations.length > 0 ? storeConversations : initialConversations;
+  const sendMessage = useChatStore((s) => s.sendMessage);
+  const markRead = useChatStore((s) => s.markConversationRead);
+
   const [showContact, setShowContact] = useState(false);
   const [showThread, setShowThread] = useState(false);
   const isLg = useIsLg();
   const isMobile = useIsMobile();
 
   const activeConversation = conversations.find((c) => c.id === chat.selected) ?? conversations[0];
+
+  const handleSelectConversation = (conv: Conversation) => {
+    setShowThread(true);
+    markRead(conv.id);
+  };
 
   return (
     <>
@@ -43,11 +53,12 @@ export function Chat({ conversations }: ChatProps) {
             "transition-transform duration-300 ease-out will-change-transform max-md:col-start-1 max-md:row-start-1",
             showThread && "max-md:pointer-events-none max-md:-translate-x-full",
           )}
-          onSelectConversation={() => setShowThread(true)}
+          onSelectConversation={handleSelectConversation}
         />
         <ChatThread
           contact={activeConversation.contact}
           messages={activeConversation.messages}
+          onSendMessage={(text) => sendMessage(activeConversation.id, text)}
           showBackButton={isMobile}
           onBack={() => setShowThread(false)}
           onOpenContact={() => setShowContact(true)}

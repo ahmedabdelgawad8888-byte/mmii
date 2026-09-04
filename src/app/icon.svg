@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1112 1112" fill="none" role="img" aria-label="Trygc CRM Hub">
+  <g transform="translate(270 0)">
+    <circle cx="270.5" cy="312.5" r="171.25" stroke="#EA620A" stroke-width="115.5" />
+    <path d="M484.25 840A213.75 213.75 0 1 1 270.5 626.25" stroke="#52348C" stroke-width="114.5" stroke-linecap="butt" />
+    <g fill="#52348C">
+      <circle cx="500.5" cy="70" r="70" />
+      <path d="M466 116 L471 167 L527 116 Z" />
+    </g>
+  </g>
+</svg>

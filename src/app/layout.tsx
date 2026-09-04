@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -16,6 +15,15 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: APP_CONFIG.meta.title,
   description: APP_CONFIG.meta.description,
+  applicationName: APP_CONFIG.name,
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -44,8 +52,6 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <Toaster />
           </PreferencesStoreProvider>
         </TooltipProvider>
-        {/* Used for this project's hosted demo. Feel free to remove it; it is not required for template functionality. */}
-        <Analytics />
       </body>
     </html>
   );

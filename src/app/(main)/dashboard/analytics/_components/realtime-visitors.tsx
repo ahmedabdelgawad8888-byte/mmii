@@ -1,12 +1,24 @@
 "use client";
 
-import { Ellipsis } from "lucide-react";
-import { Bar, BarChart, type BarShapeProps, XAxis, YAxis } from "recharts";
+import * as React from "react";
 
+import { Download, Ellipsis, Pause, Play, RefreshCw } from "lucide-react";
+import { Bar, BarChart, type BarShapeProps, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const realtimeData = [
+const initialRealtimeData = [
   { minute: 1, visitors: 0 },
   { minute: 2, visitors: 6 },
   { minute: 3, visitors: 12 },
@@ -48,7 +60,7 @@ const chartConfig = {
 
 function RealtimeBarShape(props: BarShapeProps) {
   const { height, payload, width, x, y } = props;
-  const barPayload = payload as (typeof realtimeData)[number] | undefined;
+  const barPayload = payload as (typeof initialRealtimeData)[number] | undefined;
   const barHeightValue = Number(height);
   const barWidthValue = Number(width);
   const xValue = Number(x);
@@ -89,31 +101,106 @@ function RealtimeBarShape(props: BarShapeProps) {
 }
 
 export function RealtimeVisitors() {
+  const [data, setData] = React.useState(initialRealtimeData);
+  const [isLive, setIsLive] = React.useState(true);
+  const [activeCount, setActiveCount] = React.useState(24);
+
+  React.useEffect(() => {
+    if (!isLive) return;
+
+    const interval = setInterval(() => {
+      setActiveCount((prev) => {
+        const delta = Math.floor(Math.random() * 5) - 2;
+        return Math.max(12, Math.min(38, prev + delta));
+      });
+
+      setData((prev) => {
+        const nextVal = Math.floor(Math.random() * 22);
+        const shifted = prev.slice(1).map((item, idx) => ({ ...item, minute: idx + 1 }));
+        return [...shifted, { minute: 30, visitors: nextVal }];
+      });
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isLive]);
+
+  const handleToggleStream = () => {
+    setIsLive((prev) => {
+      const next = !prev;
+      toast.info(next ? "Realtime stream resumed" : "Realtime stream paused");
+      return next;
+    });
+  };
+
+  const handleRefresh = () => {
+    setData((prev) =>
+      prev.map((item) => ({
+        ...item,
+        visitors: Math.floor(Math.random() * 22),
+      })),
+    );
+    setActiveCount(Math.floor(20 + Math.random() * 12));
+    toast.success("Telemetry refreshed");
+  };
+
+  const handleExportEvents = () => {
+    toast.success("Exported 30-minute realtime telemetry stream (JSON)");
+  };
+
   return (
     <Card className="h-full">
       <CardHeader>
         <CardTitle className="font-normal">Realtime Visitors</CardTitle>
         <CardAction>
-          <Ellipsis className="size-4" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="cursor-pointer" aria-label="Realtime stream actions">
+                <Ellipsis className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={handleToggleStream} className="cursor-pointer">
+                  {isLive ? <Pause /> : <Play />}
+                  {isLive ? "Pause stream" : "Resume stream"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleRefresh} className="cursor-pointer">
+                  <RefreshCw />
+                  Refresh stream
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={handleExportEvents} className="cursor-pointer">
+                  <Download />
+                  Export events
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardAction>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-end justify-between">
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl tabular-nums leading-none tracking-tight">24</span>
+            <span className="text-2xl tabular-nums leading-none tracking-tight">{activeCount}</span>
             <span className="text-muted-foreground text-sm">per minute</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-75" />
-              <span className="relative inline-flex size-2 rounded-full bg-green-500" />
+              {isLive && (
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-500 opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex size-2 rounded-full ${isLive ? "bg-green-500" : "bg-amber-500"}`}
+              />
             </span>
-            <span>Live</span>
+            <span>{isLive ? "Live" : "Paused"}</span>
           </div>
         </div>
         <ChartContainer config={chartConfig} className="h-36 w-full">
-          <BarChart data={realtimeData} margin={{ bottom: 0, left: 0, right: 0, top: 0 }} barCategoryGap={3}>
+          <BarChart data={data} margin={{ bottom: 0, left: 0, right: 0, top: 0 }} barCategoryGap={3}>
             <XAxis dataKey="minute" hide />
             <YAxis hide domain={[0, 22]} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
@@ -121,26 +208,42 @@ export function RealtimeVisitors() {
           </BarChart>
         </ChartContainer>
         <div className="grid grid-cols-2">
-          <div className="flex items-center gap-3 border-border/50 border-r border-b pt-1 pr-5 pb-4">
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-3 border-border/50 border-r border-b pt-1 pr-5 pb-4 text-left transition-colors hover:bg-muted/40"
+            onClick={() => toast.info("United States: 14 active sessions · Top region: Virginia (AWS us-east-1)")}
+          >
             <span aria-hidden="true" className="flag:US shrink-0 rounded-xs text-lg ring-1 ring-foreground/10" />
             <span className="min-w-0 flex-1 truncate text-sm">United States</span>
             <span className="text-sm tabular-nums">14</span>
-          </div>
-          <div className="flex items-center gap-3 border-border/50 border-b pt-1 pb-4 pl-5">
+          </button>
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-3 border-border/50 border-b pt-1 pb-4 pl-5 text-left transition-colors hover:bg-muted/40"
+            onClick={() => toast.info("United Kingdom: 4 active sessions · Top region: London")}
+          >
             <span aria-hidden="true" className="flag:GB shrink-0 rounded-xs text-lg ring-1 ring-foreground/10" />
             <span className="min-w-0 flex-1 truncate text-sm">United Kingdom</span>
             <span className="text-sm tabular-nums">4</span>
-          </div>
-          <div className="flex items-center gap-3 border-border/50 border-r pt-4 pr-5 pb-1">
+          </button>
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-3 border-border/50 border-r pt-4 pr-5 pb-1 text-left transition-colors hover:bg-muted/40"
+            onClick={() => toast.info("Canada: 3 active sessions · Top region: Ontario")}
+          >
             <span aria-hidden="true" className="flag:CA shrink-0 rounded-xs text-lg ring-1 ring-foreground/10" />
             <span className="min-w-0 flex-1 truncate text-sm">Canada</span>
             <span className="text-sm tabular-nums">3</span>
-          </div>
-          <div className="flex items-center gap-3 pt-4 pb-1 pl-5">
+          </button>
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-3 pt-4 pb-1 pl-5 text-left transition-colors hover:bg-muted/40"
+            onClick={() => toast.info("India: 3 active sessions · Top region: Bengaluru")}
+          >
             <span aria-hidden="true" className="flag:IN shrink-0 rounded-xs text-lg ring-1 ring-foreground/10" />
             <span className="min-w-0 flex-1 truncate text-sm">India</span>
             <span className="text-sm tabular-nums">3</span>
-          </div>
+          </button>
         </div>
       </CardContent>
     </Card>

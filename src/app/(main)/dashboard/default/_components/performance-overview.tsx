@@ -1,5 +1,9 @@
 "use client";
 
+import * as React from "react";
+
+import Link from "next/link";
+
 import { addHours, endOfToday, format, parseISO, subHours } from "date-fns";
 import { Area, CartesianGrid, ComposedChart, Line, XAxis } from "recharts";
 
@@ -230,30 +234,66 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function PerformanceOverview() {
+  const [period, setPeriod] = React.useState<"week" | "month" | "quarter">("quarter");
+  const [segment, setSegment] = React.useState<"all" | "paid" | "organic">("all");
+
+  const filteredData = React.useMemo(() => {
+    let sliced = chartData;
+    if (period === "week") {
+      sliced = chartData.slice(-14);
+    } else if (period === "month") {
+      sliced = chartData.slice(-60);
+    }
+
+    if (segment === "paid") {
+      return sliced.map((d) => ({
+        ...d,
+        returningUsers: Math.round(d.returningUsers * 0.4),
+        activeAccounts: Math.round(d.activeAccounts * 0.6),
+      }));
+    }
+    if (segment === "organic") {
+      return sliced.map((d) => ({
+        ...d,
+        newCustomers: Math.round(d.newCustomers * 0.5),
+      }));
+    }
+    return sliced;
+  }, [period, segment]);
+
+  let periodLabel = "last 3 months";
+  if (period === "week") {
+    periodLabel = "last 7 days";
+  } else if (period === "month") {
+    periodLabel = "last 30 days";
+  }
+
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle className="leading-none">Customer Activity</CardTitle>
         <CardDescription>
-          <span className="@[540px]/card:block hidden">Customer activity for the last 3 months</span>
-          <span className="@[540px]/card:hidden">Last 3 months</span>
+          <span className="@[540px]/card:block hidden">Customer activity for the {periodLabel}</span>
+          <span className="@[540px]/card:hidden">{periodLabel}</span>
         </CardDescription>
         <CardAction className="flex items-center gap-2">
-          <Select defaultValue="quarter">
+          <Select value={period} onValueChange={(val) => setPeriod(val as typeof period)}>
             <SelectTrigger size="sm" className="w-28">
-              <SelectValue placeholder="3 months" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Period</SelectLabel>
+                <SelectItem value="week">7 days</SelectItem>
+                <SelectItem value="month">30 days</SelectItem>
                 <SelectItem value="quarter">3 months</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
 
-          <Select defaultValue="all">
+          <Select value={segment} onValueChange={(val) => setSegment(val as typeof segment)}>
             <SelectTrigger size="sm" className="w-32">
-              <SelectValue placeholder="All segments" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -265,15 +305,15 @@ export function PerformanceOverview() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm">
-            View report
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/analytics">View report</Link>
           </Button>
         </CardAction>
       </CardHeader>
 
       <CardContent>
         <ChartContainer config={chartConfig} className="aspect-auto h-80 w-full">
-          <ComposedChart data={chartData} margin={{ top: 0 }}>
+          <ComposedChart data={filteredData} margin={{ top: 0 }}>
             <defs>
               <linearGradient id="fillNewCustomers" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--color-newCustomers)" stopOpacity={0.36} />

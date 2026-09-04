@@ -2,7 +2,9 @@
 
 import { ArrowRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type ChartConfig,
@@ -66,8 +68,19 @@ export function AssignmentStatus() {
     <Card className="h-full">
       <CardHeader>
         <CardTitle className="text-sm">Assignment Status</CardTitle>
-        <CardAction className="flex items-center gap-1 text-muted-foreground text-xs">
-          View Report <ArrowRight className="size-4" />
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+            onClick={() =>
+              toast.info("Assignment Status Report", {
+                description: "Overall completion: 87/115 submitted (75.6%) · 18 overdue tasks flagged for followup.",
+              })
+            }
+          >
+            View Report <ArrowRight className="size-4" />
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>

@@ -4,6 +4,7 @@ import type { Column, ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { cn } from "cn";
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -190,15 +191,24 @@ export const columns: ColumnDef<DataTableFeatures, Task>[] = [
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem>Make a copy</DropdownMenuItem>
-              <DropdownMenuItem>Favorite</DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => toast.info(`Editing task ${task.id}: "${task.title}"`)}>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.success(`Created copy of task ${task.id}`)}>
+                Make a copy
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.success(`Added ${task.id} to starred tasks`)}>
+                Favorite
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup value={task.label}>
+                  <DropdownMenuRadioGroup
+                    value={task.label}
+                    onValueChange={(val) => toast.success(`Changed label for ${task.id} to ${val}`)}
+                  >
                     {labels.map((label) => (
                       <DropdownMenuRadioItem key={label.value} value={label.value}>
                         {label.label}
@@ -208,7 +218,17 @@ export const columns: ColumnDef<DataTableFeatures, Task>[] = [
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() =>
+                  toast.success(`Deleted task ${task.id}`, {
+                    action: {
+                      label: "Undo",
+                      onClick: () => toast.info(`Restored task ${task.id}`),
+                    },
+                  })
+                }
+              >
                 Delete
                 <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
               </DropdownMenuItem>

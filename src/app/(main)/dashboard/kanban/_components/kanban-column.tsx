@@ -4,20 +4,30 @@ import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { cn } from "cn";
-import { GripVertical, MoreVertical, Plus } from "lucide-react";
+import { ArrowUpDown, GripVertical, MoreVertical, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { SortableTaskCard } from "./sortable-task-card";
-import type { Column, Task } from "./types";
+import type { Column, ColumnId, Task } from "./types";
 
 interface KanbanColumnProps {
   column: Column;
   index: number;
   tasks: Task[];
+  onAddTask?: (columnId: ColumnId) => void;
+  onClearTasks?: (columnId: ColumnId) => void;
+  onSortTasks?: (columnId: ColumnId) => void;
 }
 
-export function KanbanColumn({ column, index, tasks }: KanbanColumnProps) {
+export function KanbanColumn({ column, index, tasks, onAddTask, onClearTasks, onSortTasks }: KanbanColumnProps) {
   const columnSortable = useSortable({
     id: `column:${column.id}`,
     index,
@@ -62,12 +72,46 @@ export function KanbanColumn({ column, index, tasks }: KanbanColumnProps) {
           </p>
         </div>
         <div className="-mr-2 flex items-center gap-0.5 text-muted-foreground">
-          <Button variant="ghost" size="icon-sm" aria-label={`Add task to ${column.title}`}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Add task to ${column.title}`}
+            className="cursor-pointer"
+            onClick={() => onAddTask?.(column.id)}
+          >
             <Plus />
           </Button>
-          <Button variant="ghost" size="icon-sm" aria-label={`${column.title} column actions`}>
-            <MoreVertical />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`${column.title} column actions`}
+                className="cursor-pointer"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem className="cursor-pointer" onClick={() => onAddTask?.(column.id)}>
+                <Plus className="size-4" />
+                Add card
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => onSortTasks?.(column.id)}>
+                <ArrowUpDown className="size-4" />
+                Sort column
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="cursor-pointer"
+                onClick={() => onClearTasks?.(column.id)}
+              >
+                <Trash2 className="size-4" />
+                Clear column
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

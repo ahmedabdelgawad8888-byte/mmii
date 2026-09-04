@@ -1,10 +1,19 @@
 "use client";
 
-import { Ellipsis } from "lucide-react";
+import { Download, Ellipsis, Sparkles } from "lucide-react";
 import { CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const qualitySeries = [
   { date: "2026-04-01T00:00:00.000Z", actualQuality: 0.4, baselineQuality: -1.2 },
@@ -123,7 +132,35 @@ export function TrafficQuality() {
       <CardHeader>
         <CardTitle className="font-normal">Traffic Quality</CardTitle>
         <CardAction>
-          <Ellipsis className="size-4" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="cursor-pointer" aria-label="Traffic quality options">
+                <Ellipsis className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() =>
+                    toast.info("Traffic Quality Analysis", {
+                      description: "Quality index consistently outperformed baseline by +1.4% this month.",
+                    })
+                  }
+                >
+                  <Sparkles />
+                  Analyze trends
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => toast.success("Exported traffic quality dataset (CSV)")}
+                >
+                  <Download />
+                  Export data
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardAction>
       </CardHeader>
 

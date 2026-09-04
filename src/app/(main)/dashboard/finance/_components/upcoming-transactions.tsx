@@ -3,6 +3,7 @@
 import { addDays, format, set } from "date-fns";
 import { ChevronRight, Zap } from "lucide-react";
 import { siClaude, siLinear, siResend } from "simple-icons";
+import { toast } from "sonner";
 
 import { SimpleIcon } from "@/components/simple-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +57,17 @@ export function UpcomingTransactions() {
 
         <ItemGroup>
           {transactions.map((transaction) => (
-            <Item key={transaction.id} variant="outline" size="xs">
+            <Item
+              key={transaction.id}
+              variant="outline"
+              size="xs"
+              className="cursor-pointer transition-colors hover:bg-muted/50"
+              onClick={() =>
+                toast.info(`${transaction.title}`, {
+                  description: `Due on ${transaction.date}. Autopay is enabled.`,
+                })
+              }
+            >
               <ItemMedia>
                 <div className="grid size-9 place-items-center rounded-md border bg-background">
                   <SimpleIcon icon={transaction.icon} />

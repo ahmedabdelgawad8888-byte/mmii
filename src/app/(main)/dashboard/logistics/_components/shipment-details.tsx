@@ -1,5 +1,19 @@
 import { cn } from "cn";
-import { AlertTriangleIcon, Copy, Plane, Ship, Star, Truck } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  MapPin,
+  Navigation,
+  Plane,
+  Radio,
+  Ship,
+  Star,
+  Truck,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -78,13 +92,27 @@ function ShipmentOverview({ shipment }: { shipment: Shipment }) {
   const contactLabel = getContactLabel(shipment.mode);
   const transportNumberLabel = getTransportNumberLabel(shipment.mode);
 
+  const handleCopyShipmentId = () => {
+    navigator.clipboard?.writeText(shipment.id);
+    toast.success(`Copied shipment #${shipment.id} to clipboard`);
+  };
+
+  const handleCopyCustomerId = () => {
+    navigator.clipboard?.writeText(shipment.customer.id);
+    toast.success(`Copied customer ID ${shipment.customer.id}`);
+  };
+
+  const handleContactDispatch = () => {
+    toast.success(`Dispatch radio link established: Calling ${contactLabel.toLowerCase()}...`);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center gap-2">
           <h1 className="font-medium text-lg tabular-nums tracking-tight sm:text-xl">#{shipment.id}</h1>
-          <Button variant="ghost" size="icon-sm" aria-label="Copy shipment ID">
-            <Copy />
+          <Button variant="ghost" size="icon-sm" aria-label="Copy shipment ID" onClick={handleCopyShipmentId}>
+            <Copy className="size-4" />
           </Button>
         </div>
 
@@ -112,16 +140,20 @@ function ShipmentOverview({ shipment }: { shipment: Shipment }) {
 
           <div className="flex flex-col gap-1">
             <div className="font-medium text-sm leading-none">{shipment.customer.name}</div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-xs tabular-nums leading-none tracking-tight">{shipment.customer.id}</span>{" "}
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              onClick={handleCopyCustomerId}
+            >
+              <span className="text-xs tabular-nums leading-none tracking-tight">{shipment.customer.id}</span>
               <Copy className="size-3" />
-            </div>
+            </button>
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-1">
           <Badge variant="secondary">
-            <Star />
+            <Star className="size-3" />
             {shipment.customer.tier}
           </Badge>
           <div className="text-muted-foreground text-xs leading-none">{shipment.customer.tierLabel}</div>
@@ -134,7 +166,7 @@ function ShipmentOverview({ shipment }: { shipment: Shipment }) {
         <div className="flex items-start justify-between gap-4">
           <h2 className="font-medium">Cargo details</h2>
 
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleContactDispatch}>
             <ContactIcon data-icon="inline-start" />
             {contactLabel}
           </Button>
@@ -242,27 +274,147 @@ export function ShipmentDetails({ shipment }: ShipmentDetailsProps) {
                 Activity
               </TabsTrigger>
             </TabsList>
+
             <TabsContent className="min-h-0 overflow-auto p-4" value="overview">
               <ShipmentOverview shipment={shipment} />
             </TabsContent>
-            <TabsContent className="p-4" value="route">
-              <div className="grid h-full place-items-center rounded-md border border-dashed text-muted-foreground text-sm">
-                Route view coming soon.
+
+            {/* Route Tab */}
+            <TabsContent className="min-h-0 space-y-4 overflow-auto p-4" value="route">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 rounded-xl border bg-card p-4">
+                  <div className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase">
+                    <MapPin className="size-4 text-emerald-500" />
+                    Origin Terminal
+                  </div>
+                  <p className="font-semibold text-base">{shipment.origin.display}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {shipment.origin.country} ({shipment.origin.countryCode})
+                  </p>
+                  <div className="pt-2 text-muted-foreground text-xs">
+                    Coordinates: {shipment.origin.coordinates.join(", ")}
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-xl border bg-card p-4">
+                  <div className="flex items-center gap-2 font-semibold text-muted-foreground text-xs uppercase">
+                    <Navigation className="size-4 text-primary" />
+                    Destination Hub
+                  </div>
+                  <p className="font-semibold text-base">{shipment.destination.display}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {shipment.destination.country} ({shipment.destination.countryCode})
+                  </p>
+                  <div className="pt-2 text-muted-foreground text-xs">
+                    Coordinates: {shipment.destination.coordinates.join(", ")}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 rounded-xl border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-medium text-sm">
+                    <Radio className="size-4 animate-pulse text-emerald-500" />
+                    Live Route Telemetry
+                  </div>
+                  <Badge variant="outline">{shipment.progress}% complete</Badge>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Carrier assigned: {shipment.transportNumber} ({shipment.mode.toUpperCase()}) • Est. Arrival:{" "}
+                  {shipment.eta} ({shipment.etaMeta})
+                </p>
               </div>
             </TabsContent>
-            <TabsContent className="p-4" value="cargo">
-              <div className="grid h-full place-items-center rounded-md border border-dashed text-muted-foreground text-sm">
-                Cargo view coming soon.
+
+            {/* Cargo Tab */}
+            <TabsContent className="min-h-0 space-y-4 overflow-auto p-4" value="cargo">
+              <div className="space-y-3 rounded-xl border bg-card p-4">
+                <h3 className="font-semibold text-base">Manifest & Freight Profile</h3>
+                <div className="grid gap-3 text-sm sm:grid-cols-3">
+                  <div>
+                    <span className="text-muted-foreground text-xs">Description</span>
+                    <p className="font-medium">{shipment.cargo}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Total Mass</span>
+                    <p className="font-medium">{shipment.weight}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Route Mode</span>
+                    <p className="font-medium capitalize">
+                      {shipment.mode} ({shipment.routeType})
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+                <h4 className="mb-1 font-semibold text-amber-900 text-sm dark:text-amber-100">
+                  {shipment.handling.label}
+                </h4>
+                <p className="text-amber-800 text-xs dark:text-amber-200">{shipment.handling.note}</p>
               </div>
             </TabsContent>
-            <TabsContent className="p-4" value="documents">
-              <div className="grid h-full place-items-center rounded-md border border-dashed text-muted-foreground text-sm">
-                Documents view coming soon.
-              </div>
+
+            {/* Documents Tab */}
+            <TabsContent className="min-h-0 space-y-3 overflow-auto p-4" value="documents">
+              {[
+                { name: `Bill_of_Lading_BOL-${shipment.id}.pdf`, type: "Master Waybill", size: "420 KB" },
+                { name: `Commercial_Invoice_CI-${shipment.id}.pdf`, type: "Customs Valuation", size: "185 KB" },
+                { name: `Export_Clearance_Declaration.pdf`, type: "Regulatory Permit", size: "290 KB" },
+                { name: `Proof_of_Delivery_Receipt.pdf`, type: "Carrier Verification", size: "94 KB" },
+              ].map((doc) => (
+                <div
+                  key={doc.name}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3 shadow-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="size-5 text-primary" />
+                    <div>
+                      <p className="font-medium text-sm">{doc.name}</p>
+                      <span className="text-muted-foreground text-xs">
+                        {doc.type} • {doc.size}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => toast.info(`Viewing ${doc.name}`)}
+                      title="View document"
+                    >
+                      <Eye className="size-4" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      onClick={() => toast.success(`Downloading ${doc.name}`)}
+                      title="Download PDF"
+                    >
+                      <Download className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </TabsContent>
-            <TabsContent className="p-4" value="activity">
-              <div className="grid h-full place-items-center rounded-md border border-dashed text-muted-foreground text-sm">
-                Activity view coming soon.
+
+            {/* Activity Tab */}
+            <TabsContent className="min-h-0 overflow-auto p-4" value="activity">
+              <div className="relative space-y-4 pl-6 before:absolute before:top-2 before:bottom-2 before:left-2.5 before:w-0.5 before:bg-border">
+                {[
+                  { title: "Out for final hub transit", time: "2 hours ago", done: true },
+                  { title: "Customs clearance inspection completed", time: "Yesterday, 18:30", done: true },
+                  { title: `Departed origin terminal (${shipment.origin.display})`, time: "3 days ago", done: true },
+                  { title: "Freight manifest registered & approved", time: "4 days ago", done: true },
+                  { title: `Order booked by ${shipment.customer.name}`, time: "5 days ago", done: true },
+                ].map((act) => (
+                  <div key={act.title} className="relative flex flex-col gap-0.5">
+                    <span className="absolute top-1 -left-6 flex size-3 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
+                    <span className="font-medium text-sm leading-tight">{act.title}</span>
+                    <span className="text-muted-foreground text-xs">{act.time}</span>
+                  </div>
+                ))}
               </div>
             </TabsContent>
           </Tabs>

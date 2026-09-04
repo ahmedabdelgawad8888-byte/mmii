@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { addMinutes, differenceInCalendarDays, endOfToday, format, parseISO } from "date-fns";
 import { CircleAlertIcon, CircleCheckIcon, Clock3Icon, LoaderIcon, UserRound } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,19 +67,31 @@ export const recentCustomersColumns: ColumnDef<DataTableFeatures, RecentCustomer
     accessorKey: "name",
     header: "Customer",
     cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-md border bg-muted">
+      <button
+        type="button"
+        className="group flex cursor-pointer items-center gap-2 text-left"
+        onClick={() =>
+          toast.info(`${row.original.name} (${row.original.email})`, {
+            description: `Plan: ${row.original.plan} · Status: ${row.original.status} · Billing: ${row.original.billing}`,
+          })
+        }
+      >
+        <span className="flex size-8 items-center justify-center rounded-md border bg-muted transition-colors group-hover:bg-accent">
           <UserRound className="size-4 text-muted-foreground" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-end justify-between gap-3">
             <div className="grid min-w-0 gap-0.5">
-              <span className="truncate font-medium text-sm leading-none">{row.original.name}</span>
-              <span className="truncate text-muted-foreground text-xs leading-none">#{row.original.id}</span>
+              <span className="truncate font-medium text-sm leading-none group-hover:underline">
+                {row.original.name}
+              </span>
+              <span className="truncate text-muted-foreground text-xs leading-none">
+                #{row.original.id} · {row.original.email}
+              </span>
             </div>
           </div>
         </div>
-      </div>
+      </button>
     ),
     enableHiding: false,
   },

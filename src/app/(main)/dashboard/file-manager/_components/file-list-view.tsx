@@ -1,29 +1,23 @@
 "use client";
-
-import { useState } from "react";
-
 import { cn } from "cn";
 import { Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { type FileManagerFile, fileIcons } from "./data";
+import { type FileManagerFile, fileIcons, fileKindLabels } from "./data";
 import { FileActions } from "./file-actions";
 
 interface FileListViewProps {
   files: FileManagerFile[];
+  onToggleStar?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function FileListView({ files }: FileListViewProps) {
-  const [listFiles, setListFiles] = useState(files);
-
-  function toggleStar(fileId: string) {
-    setListFiles((current) => current.map((file) => (file.id === fileId ? { ...file, starred: !file.starred } : file)));
-  }
-
+export function FileListView({ files, onToggleStar, onDelete }: FileListViewProps) {
   return (
     <Table>
       <TableHeader>
@@ -38,7 +32,7 @@ export function FileListView({ files }: FileListViewProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {listFiles.map((file) => {
+        {files.map((file) => {
           const FileIcon = fileIcons[file.kind];
 
           return (
@@ -46,7 +40,16 @@ export function FileListView({ files }: FileListViewProps) {
               <TableCell className="pl-0">
                 <div className="flex min-w-0 items-center gap-3">
                   <FileIcon className="size-5 shrink-0 text-muted-foreground" />
-                  <Button variant="link" size="sm" className="h-auto max-w-72 justify-start px-0">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto max-w-72 cursor-pointer justify-start px-0 text-foreground hover:text-primary"
+                    onClick={() =>
+                      toast.info(`Opened "${file.name}"`, {
+                        description: `Type: ${fileKindLabels[file.kind]} · Size: ${file.size} · Owner: ${file.owner}`,
+                      })
+                    }
+                  >
                     <span className="truncate">{file.name}</span>
                   </Button>
                   {file.shared && (
@@ -72,11 +75,15 @@ export function FileListView({ files }: FileListViewProps) {
                     variant="ghost"
                     size="icon-sm"
                     aria-label={file.starred ? `Unstar ${file.name}` : `Star ${file.name}`}
-                    onClick={() => toggleStar(file.id)}
+                    onClick={() => onToggleStar?.(file.id)}
                   >
                     <Star className={cn(file.starred && "fill-current")} />
                   </Button>
-                  <FileActions file={file} onToggleStar={() => toggleStar(file.id)} />
+                  <FileActions
+                    file={file}
+                    onToggleStar={() => onToggleStar?.(file.id)}
+                    onDelete={() => onDelete?.(file.id)}
+                  />
                 </div>
               </TableCell>
             </TableRow>

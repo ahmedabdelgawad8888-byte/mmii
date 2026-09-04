@@ -16,9 +16,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CreditCard,
+  Download,
   Search,
   UsersRound,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -226,6 +228,18 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => {
+              const count = Object.keys(rowSelection).length || data.length;
+              toast.success(`Exported ${count} customer records as CSV`);
+            }}
+          >
+            <Download />
+            Export
+          </Button>
         </div>
       </div>
 

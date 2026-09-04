@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "cn";
 import { CalendarDays, CalendarRange } from "lucide-react";
 
@@ -22,9 +24,11 @@ export function TaskReminders() {
         <CardHeader>
           <CardTitle>Upcoming Meetings</CardTitle>
           <CardAction>
-            <Button variant="outline" size="sm">
-              <CalendarDays data-icon="inline-start" />
-              View Calendar
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/calendar">
+                <CalendarDays data-icon="inline-start" />
+                View Calendar
+              </Link>
             </Button>
           </CardAction>
         </CardHeader>

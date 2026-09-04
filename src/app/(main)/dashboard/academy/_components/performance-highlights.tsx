@@ -2,8 +2,10 @@
 
 import { ArrowRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
 
@@ -130,8 +132,20 @@ export function PerformanceHighlights() {
     <Card className="h-full">
       <CardHeader>
         <CardTitle className="text-sm">Performance Highlights</CardTitle>
-        <CardAction className="flex items-center gap-1 text-muted-foreground text-xs">
-          View Insights <ArrowRight className="size-4" />
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+            onClick={() =>
+              toast.info("Academic Performance Insights", {
+                description:
+                  "Highest scoring subject: Pure Math (84% in G11A) · Most improved: Physics (+12% in G11C).",
+              })
+            }
+          >
+            View Insights <ArrowRight className="size-4" />
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>

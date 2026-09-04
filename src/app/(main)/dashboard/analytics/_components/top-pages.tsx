@@ -1,6 +1,17 @@
-import { Ellipsis } from "lucide-react";
+"use client";
 
+import { Copy, Download, Ellipsis, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const pages = [
@@ -12,12 +23,42 @@ const pages = [
 ];
 
 export function TopPages() {
+  const handleCopyUrls = () => {
+    const urls = pages.map((p) => p.path).join("\n");
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(urls);
+    }
+    toast.success("Page URLs copied to clipboard");
+  };
+
+  const handleExport = () => {
+    toast.success("Page performance report exported (CSV)");
+  };
+
   return (
     <Card className="h-full gap-2">
       <CardHeader>
         <CardTitle className="font-normal">Page Performance</CardTitle>
         <CardAction>
-          <Ellipsis className="size-4" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="cursor-pointer" aria-label="Page performance options">
+                <Ellipsis className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={handleCopyUrls} className="cursor-pointer">
+                  <Copy />
+                  Copy URLs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport} className="cursor-pointer">
+                  <Download />
+                  Export stats
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardAction>
       </CardHeader>
 
@@ -33,8 +74,21 @@ export function TopPages() {
           </TableHeader>
           <TableBody className="[&_tr]:border-border/50">
             {pages.map((page) => (
-              <TableRow className="hover:bg-transparent" key={page.path}>
-                <TableCell className="max-w-0 truncate py-4 font-medium">{page.path}</TableCell>
+              <TableRow
+                className="cursor-pointer hover:bg-muted/40"
+                key={page.path}
+                onClick={() =>
+                  toast.info(`Performance for ${page.path}`, {
+                    description: `${page.views} views · Avg time: ${page.time} · Bounce rate: ${page.bounce}`,
+                  })
+                }
+              >
+                <TableCell className="max-w-0 truncate py-4 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span>{page.path}</span>
+                    <ExternalLink className="size-3 text-muted-foreground opacity-50" />
+                  </div>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{page.views}</TableCell>
                 <TableCell className="text-right text-muted-foreground tabular-nums">{page.time}</TableCell>
                 <TableCell className="text-right text-muted-foreground tabular-nums">{page.bounce}</TableCell>

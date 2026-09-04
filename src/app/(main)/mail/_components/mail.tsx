@@ -16,7 +16,7 @@ import {
   MAIL_LIST_PANEL_ID,
 } from "./mail-layout-config";
 import { MailView } from "./mail-view";
-import { useMail } from "./use-mail";
+import { useMail, useMailStore } from "./use-mail";
 
 interface MailProps {
   mails: Mail[];
@@ -44,8 +44,10 @@ export function MailComponent({ mails, defaultLayout = [...DEFAULT_MAIL_LAYOUT] 
   );
 }
 
-function MailMobileLayout({ mails }: Pick<MailProps, "mails">) {
+function MailMobileLayout({ mails: propMails }: Pick<MailProps, "mails">) {
   const [mail] = useMail();
+  const storeMails = useMailStore((s) => s.mails);
+  const mails = storeMails.length > 0 ? storeMails : propMails;
   const [isMailOpen, setIsMailOpen] = React.useState(false);
   const selectedMail = mails.find((item) => item.id === mail.selected) || null;
 
@@ -64,8 +66,10 @@ function MailMobileLayout({ mails }: Pick<MailProps, "mails">) {
   );
 }
 
-function MailDesktopLayout({ mails, defaultLayout = [...DEFAULT_MAIL_LAYOUT] }: MailProps) {
+function MailDesktopLayout({ mails: propMails, defaultLayout = [...DEFAULT_MAIL_LAYOUT] }: MailProps) {
   const [mail] = useMail();
+  const storeMails = useMailStore((s) => s.mails);
+  const mails = storeMails.length > 0 ? storeMails : propMails;
 
   return (
     <ResizablePanelGroup

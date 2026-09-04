@@ -1,8 +1,21 @@
+"use client";
+
+import * as React from "react";
+
 import { BadgeCheck, Ellipsis, Eye, Mail, Pencil, UserRoundX } from "lucide-react";
+import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import type { ProfileRecord } from "./profile-data";
 
@@ -18,7 +33,25 @@ interface ProfileHeaderProps {
   profile: ProfileRecord;
 }
 
-export function ProfileHeader({ profile }: ProfileHeaderProps) {
+export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
+  const [profile, setProfile] = React.useState(initialProfile);
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [name, setName] = React.useState(profile.name);
+  const [jobTitle, setJobTitle] = React.useState(profile.jobTitle);
+  const [timeZone, setTimeZone] = React.useState(profile.timeZone);
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfile((prev) => ({
+      ...prev,
+      name,
+      jobTitle,
+      timeZone,
+    }));
+    setIsEditOpen(false);
+    toast.success("Profile information updated successfully");
+  };
+
   return (
     <div className="flex flex-col gap-5 px-4 lg:flex-row lg:items-end lg:justify-between">
       <div className="flex min-w-0 items-center gap-4">
@@ -82,7 +115,7 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
             Email
           </a>
         </Button>
-        <Button size="sm">
+        <Button size="sm" onClick={() => setIsEditOpen(true)}>
           <Pencil data-icon="inline-start" />
           Edit profile
         </Button>
@@ -94,14 +127,17 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => toast.info("Switched view to Employee Preview mode")}>
                 <Eye />
                 View as employee
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem variant="destructive">
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => toast.error("Profile deactivation requested - notification sent to HR admin")}
+              >
                 <UserRoundX />
                 Deactivate profile
               </DropdownMenuItem>
@@ -109,6 +145,38 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleSaveProfile}>
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+              <DialogDescription>Update personal and role details for {profile.name}</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 py-3">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="edit-name">Full Name</Label>
+                <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="edit-title">Job Title</Label>
+                <Input id="edit-title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} required />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="edit-tz">Timezone</Label>
+                <Input id="edit-tz" value={timeZone} onChange={(e) => setTimeZone(e.target.value)} required />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

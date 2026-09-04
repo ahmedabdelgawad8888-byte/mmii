@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,10 +34,25 @@ function getRollingMonthData(values: readonly number[]) {
 }
 
 export function PipelineActivity() {
-  const pipelineChartData = getRollingMonthData(pipelineChartValues);
+  const [range, setRange] = React.useState<"last-30-days" | "last-quarter" | "last-12-months">("last-12-months");
+
+  const fullData = React.useMemo(() => getRollingMonthData(pipelineChartValues), []);
+  const pipelineChartData = React.useMemo(() => {
+    if (range === "last-30-days") return fullData.slice(-1);
+    if (range === "last-quarter") return fullData.slice(-3);
+    return fullData;
+  }, [fullData, range]);
+
   const totalQualified = pipelineChartData.reduce((sum, item) => sum + item.qualified, 0);
-  const discoveryCallsBooked = 184;
-  const discoveryProgress = Math.round((discoveryCallsBooked / totalQualified) * 100);
+  const discoveryCallsBooked = Math.round(totalQualified * 0.38) || 12;
+  const discoveryProgress = Math.min(100, Math.round((discoveryCallsBooked / totalQualified) * 100));
+
+  let rangeLabel = "the last 12 months";
+  if (range === "last-30-days") {
+    rangeLabel = "the last 30 days";
+  } else if (range === "last-quarter") {
+    rangeLabel = "the last quarter";
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
@@ -43,9 +60,9 @@ export function PipelineActivity() {
         <CardHeader>
           <CardTitle>Qualified Lead Flow</CardTitle>
           <CardAction>
-            <Select defaultValue="last-12-months">
+            <Select value={range} onValueChange={(val) => setRange(val as typeof range)}>
               <SelectTrigger size="sm" className="min-w-40">
-                <SelectValue placeholder="Select range" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -114,7 +131,7 @@ export function PipelineActivity() {
                 <div className="font-medium text-4xl tabular-nums leading-none">
                   {totalQualified} <span className="font-normal text-lg text-muted-foreground">leads</span>
                 </div>
-                <p className="text-muted-foreground text-sm">Total qualified leads captured over the last 12 months.</p>
+                <p className="text-muted-foreground text-sm">Total qualified leads captured over {rangeLabel}.</p>
               </div>
 
               <div className="flex flex-col gap-3 rounded-lg border border-border/60 p-3">

@@ -1,6 +1,7 @@
 "use client";
 import type { ColumnDef } from "@tanstack/react-table";
 import { MoreVertical } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,19 +118,54 @@ export const rolesColumns: ColumnDef<DataTableFeatures, Role>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-48" align="end">
             <DropdownMenuGroup>
-              {needsReview ? <DropdownMenuItem>Review changes</DropdownMenuItem> : null}
-              <DropdownMenuItem>View details</DropdownMenuItem>
-              <DropdownMenuItem disabled={isSystemRole}>Edit role</DropdownMenuItem>
-              <DropdownMenuItem disabled={isSystemRole}>Duplicate role</DropdownMenuItem>
+              {needsReview ? (
+                <DropdownMenuItem onClick={() => toast.info(`Reviewing changes for ${row.original.role}`)}>
+                  Review changes
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                onClick={() => toast.info(`Role details: ${row.original.role} (${row.original.users} members)`)}
+              >
+                View details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isSystemRole}
+                onClick={() => toast.info(`Editing permissions for ${row.original.role}`)}
+              >
+                Edit role
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isSystemRole}
+                onClick={() => toast.success(`Duplicated role "${row.original.role} (Copy)"`)}
+              >
+                Duplicate role
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>Review permissions</DropdownMenuItem>
-              <DropdownMenuItem>Manage members</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info(`Permission matrix opened for ${row.original.role}`)}>
+                Review permissions
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => toast.info(`Managing ${row.original.users} members assigned to ${row.original.role}`)}
+              >
+                Manage members
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem disabled={isSystemRole} variant="destructive">
+              <DropdownMenuItem
+                disabled={isSystemRole}
+                variant="destructive"
+                onClick={() =>
+                  toast.success(`Archived role ${row.original.role}`, {
+                    action: {
+                      label: "Undo",
+                      onClick: () => toast.info(`Restored ${row.original.role}`),
+                    },
+                  })
+                }
+              >
                 Archive role
               </DropdownMenuItem>
             </DropdownMenuGroup>

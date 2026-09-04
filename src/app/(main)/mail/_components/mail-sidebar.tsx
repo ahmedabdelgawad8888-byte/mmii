@@ -4,8 +4,17 @@ import * as React from "react";
 
 import { cn } from "cn";
 import { Check, EllipsisVertical, LogOut, PenLine, Settings2, UserPlus, UsersRound } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -31,116 +42,217 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getInitials } from "@/lib/utils";
 
 import { accounts, type MailNavItem, mailNavigation } from "./data";
+import { useMailStore } from "./use-mail";
 
 export function MailSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [selectedAccount, setSelectedAccount] = React.useState(accounts[0]);
+  const activeFolder = useMailStore((s) => s.activeFolder);
+  const setActiveFolder = useMailStore((s) => s.setActiveFolder);
+  const composeMail = useMailStore((s) => s.composeMail);
+
+  const [isComposeOpen, setIsComposeOpen] = React.useState(false);
+  const [composeTo, setComposeTo] = React.useState("");
+  const [composeSubject, setComposeSubject] = React.useState("");
+  const [composeBody, setComposeBody] = React.useState("");
+
+  const handleComposeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeTo.trim()) {
+      toast.error("Please specify a recipient email address");
+      return;
+    }
+    composeMail({
+      to: composeTo.trim(),
+      subject: composeSubject.trim(),
+      body: composeBody.trim(),
+    });
+    toast.success(`Email sent to ${composeTo.trim()}`);
+    setIsComposeOpen(false);
+    setComposeTo("");
+    setComposeSubject("");
+    setComposeBody("");
+  };
+
+  const renderItem = (nav: MailNavItem) => {
+    const isCurrent = activeFolder === nav.id;
+
+    return (
+      <SidebarMenuItem key={nav.id}>
+        <SidebarMenuButton
+          className="[&_svg]:size-3.5"
+          size="sm"
+          isActive={isCurrent}
+          tooltip={nav.title}
+          onClick={() => {
+            setActiveFolder(nav.id);
+            toast.info(`Switched to folder: ${nav.title}`);
+          }}
+        >
+          <nav.icon />
+          <span className="font-medium">{nav.title}</span>
+        </SidebarMenuButton>
+        {nav.label && <SidebarMenuBadge className="font-medium">{nav.label}</SidebarMenuBadge>}
+      </SidebarMenuItem>
+    );
+  };
 
   return (
-    <Sidebar collapsible="icon" className="absolute inset-y-0 h-full **:data-[sidebar=sidebar]:bg-background">
-      <SidebarHeader className="gap-3 py-3 pb-1">
-        <div className="flex items-center justify-between">
-          {isCollapsed ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={accountTriggerClassName}
-                  aria-label={`Open ${selectedAccount.label} menu`}
-                >
-                  <AccountMarker account={selectedAccount} isSelected />
-                </Button>
-              </DropdownMenuTrigger>
-              <AccountMenuContent
-                selectedAccountId={selectedAccount.id}
-                onSelectAccount={setSelectedAccount}
-                showAccounts
-                side="right"
-                align="start"
-              />
-            </DropdownMenu>
-          ) : (
-            <>
-              <ToggleGroup
-                type="single"
-                value={String(selectedAccount.id)}
-                onValueChange={(value) => {
-                  const account = accounts.find((item) => item.id === Number(value));
-
-                  if (account) {
-                    setSelectedAccount(account);
-                  }
-                }}
-                spacing={2}
-              >
-                {accounts.map((account) => (
-                  <ToggleGroupItem
-                    key={account.id}
-                    className={accountTriggerClassName}
-                    value={String(account.id)}
-                    aria-label={`Select ${account.label}`}
-                  >
-                    <AccountMarker account={account} />
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-
+    <>
+      <Sidebar collapsible="icon" className="absolute inset-y-0 h-full **:data-[sidebar=sidebar]:bg-background">
+        <SidebarHeader className="gap-3 py-3 pb-1">
+          <div className="flex items-center justify-between">
+            {isCollapsed ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="Open account menu">
-                    <EllipsisVertical />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={accountTriggerClassName}
+                    aria-label={`Open ${selectedAccount.label} menu`}
+                  >
+                    <AccountMarker account={selectedAccount} isSelected />
                   </Button>
                 </DropdownMenuTrigger>
-                <AccountMenuContent selectedAccountId={selectedAccount.id} onSelectAccount={setSelectedAccount} />
+                <AccountMenuContent
+                  selectedAccountId={selectedAccount.id}
+                  onSelectAccount={setSelectedAccount}
+                  showAccounts
+                  side="right"
+                  align="start"
+                />
               </DropdownMenu>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <ToggleGroup
+                  type="single"
+                  value={String(selectedAccount.id)}
+                  onValueChange={(value) => {
+                    const account = accounts.find((item) => item.id === Number(value));
+                    if (account) {
+                      setSelectedAccount(account);
+                      toast.info(`Switched account to ${account.label}`);
+                    }
+                  }}
+                  spacing={2}
+                >
+                  {accounts.map((account) => (
+                    <ToggleGroupItem
+                      key={account.id}
+                      className={accountTriggerClassName}
+                      value={String(account.id)}
+                      aria-label={`Select ${account.label}`}
+                    >
+                      <AccountMarker account={account} />
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
 
-        <Separator />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label="Open account menu">
+                      <EllipsisVertical />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <AccountMenuContent
+                    selectedAccountId={selectedAccount.id}
+                    onSelectAccount={(acc) => {
+                      setSelectedAccount(acc);
+                      toast.info(`Switched account to ${acc.label}`);
+                    }}
+                  />
+                </DropdownMenu>
+              </>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-1.5 group-data-[state=collapsed]:hidden">
-          <div className="font-medium text-sm leading-none">{selectedAccount.label}</div>
-          <div className="truncate text-muted-foreground text-sm leading-none">{selectedAccount.email}</div>
-        </div>
+          <Separator />
 
-        <Button size={isCollapsed ? "icon-sm" : "sm"} variant="outline" className="group-data-[state=expanded]:w-full">
-          <PenLine data-icon="inline-start" />
-          <span className="group-data-[state=collapsed]:hidden">New email</span>
-        </Button>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu className="gap-1">{mailNavigation.navMain.map(renderNavItem)}</SidebarMenu>
-        </SidebarGroup>
+          <div className="flex flex-col gap-1.5 group-data-[state=collapsed]:hidden">
+            <div className="font-medium text-sm leading-none">{selectedAccount.label}</div>
+            <div className="truncate text-muted-foreground text-sm leading-none">{selectedAccount.email}</div>
+          </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-normal">Folders</SidebarGroupLabel>
-          <SidebarMenu className="gap-1">{mailNavigation.folders.map(renderNavItem)}</SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu className="gap-1">{mailNavigation.navFooter.map(renderNavItem)}</SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
-  );
-}
+          <Button
+            size={isCollapsed ? "icon-sm" : "sm"}
+            variant="outline"
+            className="group-data-[state=expanded]:w-full"
+            onClick={() => setIsComposeOpen(true)}
+          >
+            <PenLine data-icon="inline-start" />
+            <span className="group-data-[state=collapsed]:hidden">New email</span>
+          </Button>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu className="gap-1">{mailNavigation.navMain.map(renderItem)}</SidebarMenu>
+          </SidebarGroup>
 
-function renderNavItem(nav: MailNavItem) {
-  return (
-    <SidebarMenuItem key={nav.id}>
-      <SidebarMenuButton className="[&_svg]:size-3.5" size="sm" isActive={nav.isActive} tooltip={nav.title}>
-        <nav.icon />
-        <span className="font-medium">{nav.title}</span>
-      </SidebarMenuButton>
-      {nav.label && <SidebarMenuBadge className="font-medium">{nav.label}</SidebarMenuBadge>}
-    </SidebarMenuItem>
+          <SidebarGroup>
+            <SidebarGroupLabel className="font-normal">Folders</SidebarGroupLabel>
+            <SidebarMenu className="gap-1">{mailNavigation.folders.map(renderItem)}</SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu className="gap-1">{mailNavigation.navFooter.map(renderItem)}</SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+
+      {/* Compose Email Dialog */}
+      <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={handleComposeSubmit}>
+            <DialogHeader>
+              <DialogTitle>New Message</DialogTitle>
+              <DialogDescription>Draft and send an email from {selectedAccount.email}</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 py-3">
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="compose-to">To</Label>
+                <Input
+                  id="compose-to"
+                  placeholder="recipient@example.com"
+                  value={composeTo}
+                  onChange={(e) => setComposeTo(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="compose-subject">Subject</Label>
+                <Input
+                  id="compose-subject"
+                  placeholder="Subject line"
+                  value={composeSubject}
+                  onChange={(e) => setComposeSubject(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="compose-body">Message</Label>
+                <Textarea
+                  id="compose-body"
+                  placeholder="Write your email here..."
+                  rows={6}
+                  value={composeBody}
+                  onChange={(e) => setComposeBody(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsComposeOpen(false)}>
+                Discard
+              </Button>
+              <Button type="submit">Send Email</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -190,7 +302,6 @@ function AccountMenuContent({
               value={String(selectedAccountId)}
               onValueChange={(value) => {
                 const account = accounts.find((item) => item.id === Number(value));
-
                 if (account) {
                   onSelectAccount(account);
                 }
@@ -210,22 +321,22 @@ function AccountMenuContent({
         </>
       )}
       <DropdownMenuGroup>
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => toast.info("Opening Account Connection Wizard...")}>
           <UserPlus />
           Add account
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => toast.info("Opening Account Manager...")}>
           <UsersRound />
           Manage accounts
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => toast.info("Opening Settings...")}>
           <Settings2 />
           Account settings
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
-        <DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => toast.success("Signed out of all accounts")}>
           <LogOut />
           Sign out
         </DropdownMenuItem>
