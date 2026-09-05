@@ -131,7 +131,7 @@ export const sidebarItems: NavGroup[] = [
     id: 4,
     label: "GOVERNANCE",
     items: [
-      { id: "settings", title: "Workspace settings", url: "/dashboard/companies/settings", icon: Building2 },
+      { id: "settings", title: "Workspace settings", url: "/dashboard/settings", icon: Building2 },
       { id: "audit", title: "Audit trail", url: "/dashboard/audit-log", icon: Lock },
     ],
   },
