@@ -61,7 +61,9 @@ export function resolveAgentModel(request: ModelRequest): { model: LanguageModel
     case "qwen":
     case "zen": {
       const preset = openAiCompatibleDefaults[providerId];
-      const baseURL = request.baseURL ?? process.env.QWEN_BASE_URL ?? preset?.baseURL;
+      // QWEN_BASE_URL is a QwenCloud override only; it must not reach Ollama or Zen.
+      const envBaseUrl = providerId === "qwen" ? process.env.QWEN_BASE_URL : undefined;
+      const baseURL = request.baseURL ?? envBaseUrl ?? preset?.baseURL;
       if (!baseURL) return { error: "No base URL is configured for this provider." };
       // A local ollama serve needs no key, so an empty value is allowed through.
       const apiKey = request.apiKey ?? envKey(...(preset?.envVars ?? [])) ?? "not-required";
