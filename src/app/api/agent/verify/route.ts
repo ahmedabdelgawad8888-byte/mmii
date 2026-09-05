@@ -14,9 +14,9 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "Malformed request body." }, { status: 400 });
   }
 
-  const resolved = resolveAgentModel({ ...body, allowFallback: body.allowFallback ?? false });
+  const resolved = resolveAgentModel(body);
   if ("error" in resolved) {
-    return Response.json({ ok: false, error: resolved.error });
+    return Response.json({ ok: false, error: resolved.error, ready: resolved.ready });
   }
 
   try {
@@ -29,10 +29,7 @@ export async function POST(req: Request) {
       ok: true,
       providerId: resolved.providerId,
       modelId: resolved.modelId,
-      viaFallback: resolved.viaFallback,
-      message: resolved.viaFallback
-        ? `${providerLabel(resolved.providerId)} answered with ${resolved.modelId}, because the selected provider has no key.`
-        : `${resolved.modelId} responded.`,
+      message: `${providerLabel(resolved.providerId)} answered with ${resolved.modelId}.`,
       sample: result.text.trim().slice(0, 40),
     });
   } catch (error) {

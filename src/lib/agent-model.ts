@@ -19,11 +19,6 @@ export const agentProviderIds: AgentProviderId[] = [
   "compatible",
 ];
 
-export interface ProviderCredential {
-  apiKey?: string;
-  baseURL?: string;
-}
-
 export interface ModelRequest {
   providerId?: AgentProviderId;
   modelId?: string;
@@ -31,65 +26,49 @@ export interface ModelRequest {
   apiKey?: string;
   baseURL?: string;
   /**
-   * Every credential the browser holds, so a provider that is configured can
-   * take over when the selected one is not.
+   * Provider ids the browser holds a key for, plus any base URLs it has set.
+   * Only identifiers travel here: a key value is sent to the provider being
+   * called and nowhere else.
    */
-  credentials?: Partial<Record<AgentProviderId, ProviderCredential>>;
-  /** Set false to fail loudly on the selected provider instead of falling through. */
-  allowFallback?: boolean;
+  configured?: AgentProviderId[];
+  baseUrls?: Partial<Record<AgentProviderId, string>>;
 }
 
 interface ProviderProfile {
   label: string;
   envVars: string[];
-  /** Used when falling back, since the selected model rarely exists elsewhere. */
-  defaultModel?: string;
+  /** Hosted endpoint for the OpenAI-compatible presets. */
   baseURL?: string;
   requiresBaseUrl?: boolean;
 }
 
 const profiles: Record<AgentProviderId, ProviderProfile> = {
-  gateway: {
-    label: "Vercel AI Gateway",
-    envVars: ["AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN"],
-    defaultModel: "anthropic/claude-sonnet-5",
-  },
-  anthropic: { label: "Anthropic", envVars: ["ANTHROPIC_API_KEY"], defaultModel: "claude-sonnet-5" },
-  openai: { label: "OpenAI", envVars: ["OPENAI_API_KEY"], defaultModel: "gpt-5.4" },
-  google: {
-    label: "Google",
-    envVars: ["GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"],
-    defaultModel: "gemini-3-pro",
-  },
-  zen: {
-    label: "OpenCode Zen",
-    envVars: ["OPENCODE_ZEN_API_KEY"],
-    baseURL: "https://opencode.ai/zen/v1",
-    defaultModel: "claude-sonnet-5",
-  },
-  ollama: {
-    label: "Ollama Cloud",
-    envVars: ["OLLAMA_API_KEY"],
-    baseURL: "https://ollama.com/v1",
-    defaultModel: "glm-5.3",
-  },
+  gateway: { label: "Vercel AI Gateway", envVars: ["AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN"] },
+  anthropic: { label: "Anthropic", envVars: ["ANTHROPIC_API_KEY"] },
+  openai: { label: "OpenAI", envVars: ["OPENAI_API_KEY"] },
+  google: { label: "Google", envVars: ["GOOGLE_GENERATIVE_AI_API_KEY", "GOOGLE_API_KEY"] },
+  zen: { label: "OpenCode Zen", envVars: ["OPENCODE_ZEN_API_KEY"], baseURL: "https://opencode.ai/zen/v1" },
+  ollama: { label: "Ollama Cloud", envVars: ["OLLAMA_API_KEY"], baseURL: "https://ollama.com/v1" },
   qwen: {
     label: "QwenCloud",
     envVars: ["DASHSCOPE_API_KEY", "QWEN_API_KEY"],
     baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    defaultModel: "qwen-plus",
   },
-  compatible: {
-    label: "OpenAI-compatible endpoint",
-    envVars: ["OPENAI_COMPATIBLE_API_KEY"],
-    requiresBaseUrl: true,
-  },
+  compatible: { label: "OpenAI-compatible endpoint", envVars: ["OPENAI_COMPATIBLE_API_KEY"], requiresBaseUrl: true },
 };
 
+export function envKey(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  return undefined;
+}
+
 /**
- * Only a runtime on this machine answers without a credential. Hosted
- * endpoints all require a key, so claiming otherwise would report a
- * provider as ready and then fail on the first message.
+ * Only a runtime on this machine answers without a credential. Hosted endpoints
+ * all require a key, so treating them as keyless would report a provider ready
+ * and then fail on the first message.
  */
 function isLocalEndpoint(baseURL?: string) {
   if (!baseURL) return false;
@@ -101,14 +80,6 @@ function isLocalEndpoint(baseURL?: string) {
   }
 }
 
-export function envKey(...names: string[]) {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-  return undefined;
-}
-
 function baseUrlFor(providerId: AgentProviderId, supplied?: string) {
   if (supplied) return supplied;
   // QWEN_BASE_URL is a QwenCloud override only; it must not reach other presets.
@@ -117,91 +88,83 @@ function baseUrlFor(providerId: AgentProviderId, supplied?: string) {
   return profiles[providerId].baseURL;
 }
 
-function credentialFor(providerId: AgentProviderId, request: ModelRequest): ProviderCredential {
-  const fromMap = request.credentials?.[providerId] ?? {};
-  // A key typed for the selected provider takes precedence over the stored map.
-  const isSelected = (request.providerId ?? "gateway") === providerId;
-  return {
-    apiKey: (isSelected ? request.apiKey : undefined) ?? fromMap.apiKey,
-    baseURL: (isSelected ? request.baseURL : undefined) ?? fromMap.baseURL,
-  };
-}
-
-/** Whether this provider could actually answer, without making a request. */
+/** Whether a provider could answer, without making a request. */
 export function providerIsConfigured(providerId: AgentProviderId, request: ModelRequest = {}) {
   const profile = profiles[providerId];
-  const credential = credentialFor(providerId, request);
-  const baseURL = baseUrlFor(providerId, credential.baseURL);
+  const isSelected = (request.providerId ?? "gateway") === providerId;
+  const baseURL = baseUrlFor(providerId, (isSelected ? request.baseURL : undefined) ?? request.baseUrls?.[providerId]);
   if (profile.requiresBaseUrl && !baseURL) return false;
-  if (credential.apiKey) return true;
+  if (isSelected && request.apiKey) return true;
+  if (request.configured?.includes(providerId)) return true;
   if (envKey(...profile.envVars)) return true;
   return isLocalEndpoint(baseURL);
-}
-
-function buildModel(providerId: AgentProviderId, modelId: string, request: ModelRequest): LanguageModel | null {
-  const profile = profiles[providerId];
-  const credential = credentialFor(providerId, request);
-  const apiKey = credential.apiKey ?? envKey(...profile.envVars);
-  const baseURL = baseUrlFor(providerId, credential.baseURL);
-
-  switch (providerId) {
-    case "anthropic":
-      return apiKey ? createAnthropic({ apiKey, baseURL })(modelId) : null;
-    case "openai":
-      return apiKey ? createOpenAI({ apiKey, baseURL })(modelId) : null;
-    case "google":
-      return apiKey ? createGoogleGenerativeAI({ apiKey, baseURL })(modelId) : null;
-    case "gateway":
-      return apiKey ? createGateway({ apiKey, baseURL })(modelId) : null;
-    default: {
-      // Ollama, QwenCloud, OpenCode Zen and any other OpenAI-compatible endpoint.
-      if (!baseURL) return null;
-      if (!apiKey && !isLocalEndpoint(baseURL)) return null;
-      return createOpenAI({ apiKey: apiKey ?? "not-required", baseURL, name: providerId })(modelId);
-    }
-  }
 }
 
 export interface ResolvedModel {
   model: LanguageModel;
   providerId: AgentProviderId;
   modelId: string;
-  /** True when the selected provider could not be used and another took over. */
-  viaFallback: boolean;
+}
+
+export interface ResolutionFailure {
+  error: string;
+  /** Providers that could answer, so the interface can offer a one-click switch. */
+  ready: { id: AgentProviderId; label: string }[];
 }
 
 /**
- * Resolves the selected provider, then falls through to any other provider that
- * holds a credential. Without this, a key saved for one provider is unusable
- * while a different one happens to be selected.
+ * Resolves exactly the provider that was selected.
+ *
+ * An earlier version silently switched provider and model when the selection
+ * had no key. That hid misconfiguration and answered with a model nobody chose,
+ * which is the wrong trade in a finance workspace: fail clearly instead, and let
+ * the interface offer the switch.
  */
-export function resolveAgentModel(request: ModelRequest): ResolvedModel | { error: string } {
-  const selected: AgentProviderId = request.providerId ?? "gateway";
-  const requestedModel = request.modelId?.trim();
+export function resolveAgentModel(request: ModelRequest): ResolvedModel | ResolutionFailure {
+  const providerId: AgentProviderId = request.providerId ?? "gateway";
+  const profile = profiles[providerId];
+  const modelId = request.modelId?.trim();
+  const ready = configuredProviders(request).filter((item) => item.id !== providerId);
 
-  const candidates: AgentProviderId[] = [selected];
-  if (request.allowFallback !== false) {
-    for (const id of agentProviderIds) {
-      if (id !== selected) candidates.push(id);
+  if (!modelId) {
+    return { error: `Choose a model for ${profile.label} in Agent settings.`, ready };
+  }
+
+  const apiKey = request.apiKey ?? envKey(...profile.envVars);
+  const baseURL = baseUrlFor(providerId, request.baseURL);
+
+  if (profile.requiresBaseUrl && !baseURL) {
+    return { error: "Set a base URL for the OpenAI-compatible endpoint in Agent settings.", ready };
+  }
+  if (!apiKey && !isLocalEndpoint(baseURL)) {
+    const hint = ready.length
+      ? ` ${ready.map((item) => item.label).join(" and ")} ${ready.length === 1 ? "is" : "are"} ready if you switch.`
+      : "";
+    return {
+      error: `${profile.label} has no API key. Add ${profile.envVars[0]} to .env.local, or save a key in Agent settings.${hint}`,
+      ready,
+    };
+  }
+
+  switch (providerId) {
+    case "anthropic":
+      return { model: createAnthropic({ apiKey, baseURL })(modelId), providerId, modelId };
+    case "openai":
+      return { model: createOpenAI({ apiKey, baseURL })(modelId), providerId, modelId };
+    case "google":
+      return { model: createGoogleGenerativeAI({ apiKey, baseURL })(modelId), providerId, modelId };
+    case "gateway":
+      return { model: createGateway({ apiKey, baseURL })(modelId), providerId, modelId };
+    default: {
+      // Ollama, QwenCloud, OpenCode Zen and any other OpenAI-compatible endpoint.
+      if (!baseURL) return { error: "No base URL is configured for this provider.", ready };
+      return {
+        model: createOpenAI({ apiKey: apiKey ?? "not-required", baseURL, name: providerId })(modelId),
+        providerId,
+        modelId,
+      };
     }
   }
-
-  for (const providerId of candidates) {
-    if (!providerIsConfigured(providerId, request)) continue;
-    const isSelected = providerId === selected;
-    const modelId = isSelected
-      ? (requestedModel ?? profiles[providerId].defaultModel)
-      : profiles[providerId].defaultModel;
-    if (!modelId) continue;
-    const model = buildModel(providerId, modelId, request);
-    if (model) return { model, providerId, modelId, viaFallback: !isSelected };
-  }
-
-  const profile = profiles[selected];
-  const envHint = profile.envVars[0];
-  return {
-    error: `${profile.label} is not configured, and no other provider has a key either. Add ${envHint} to .env.local, or open Agent settings and save a key for any provider.`,
-  };
 }
 
 export function providerLabel(providerId: AgentProviderId) {

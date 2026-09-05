@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import Link from "next/link";
 
-import { CircleCheck, KeyRound, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, CircleCheck, KeyRound, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ interface StatusPayload {
  */
 export function useAgentReadiness() {
   const settings = useAgentSettings();
-  const credentials = settings.credentials;
+  const configured = settings.configuredProviderIds;
+  const baseUrls = settings.baseUrlMap;
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [checking, setChecking] = useState(false);
 
@@ -32,7 +33,7 @@ export function useAgentReadiness() {
       const response = await fetch("/api/agent/status", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ credentials }),
+        body: JSON.stringify({ configured, baseUrls }),
       });
       setStatus((await response.json()) as StatusPayload);
     } catch {
@@ -40,7 +41,7 @@ export function useAgentReadiness() {
     } finally {
       setChecking(false);
     }
-  }, [credentials]);
+  }, [configured, baseUrls]);
 
   useEffect(() => {
     void check();
@@ -49,29 +50,72 @@ export function useAgentReadiness() {
   return { status, checking, recheck: check };
 }
 
-export function AgentSetupCard({ onRecheck, checking }: { onRecheck: () => void; checking: boolean }) {
+/**
+ * Two distinct states: nothing is configured at all, or the selected provider
+ * has no key while another one does. The second needs a switch, not a key.
+ */
+export function AgentSetupCard({
+  ready,
+  onRecheck,
+  checking,
+}: {
+  ready: { id: string; label: string }[];
+  onRecheck: () => void;
+  checking: boolean;
+}) {
   const settings = useAgentSettings();
+  const alternatives = ready.filter((item) => item.id !== settings.providerId);
+  const selectedIsReady = ready.some((item) => item.id === settings.providerId);
+
+  if (selectedIsReady) return null;
 
   return (
     <div className="rounded-lg border border-dashed p-4">
       <div className="flex items-start gap-3">
         <TriangleAlert className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-sm">No model provider is configured yet</p>
-          <p className="mt-1 text-muted-foreground text-sm">
-            The agent needs one key before it can answer. Save a key for any provider and it will be used, whichever one
-            is selected.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button size="sm" asChild>
-              <Link href="/dashboard/agent/settings">
-                <KeyRound aria-hidden="true" /> Add a key
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" onClick={onRecheck} disabled={checking}>
-              <RefreshCw className={checking ? "animate-spin" : ""} aria-hidden="true" /> Re-check
-            </Button>
-          </div>
+          {alternatives.length ? (
+            <>
+              <p className="font-medium text-sm">{settings.provider.name} has no API key</p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                {alternatives.length === 1 ? "This provider is" : "These providers are"} ready. Switching also selects
+                that provider&rsquo;s default model.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {alternatives.map((item) => (
+                  <Button
+                    key={item.id}
+                    size="sm"
+                    onClick={() => settings.update({ providerId: item.id as typeof settings.providerId })}
+                  >
+                    <ArrowLeftRight aria-hidden="true" /> Use {item.label}
+                  </Button>
+                ))}
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/dashboard/agent/settings">
+                    <KeyRound aria-hidden="true" /> Add a key instead
+                  </Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-sm">No model provider is configured yet</p>
+              <p className="mt-1 text-muted-foreground text-sm">
+                The agent needs a key for the provider you select before it can answer.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button size="sm" asChild>
+                  <Link href="/dashboard/agent/settings">
+                    <KeyRound aria-hidden="true" /> Add a key
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" onClick={onRecheck} disabled={checking}>
+                  <RefreshCw className={checking ? "animate-spin" : ""} aria-hidden="true" /> Re-check
+                </Button>
+              </div>
+            </>
+          )}
           <p className="mt-3 text-muted-foreground text-xs">
             Or add <code className="font-mono">{settings.provider.envVar}</code> to{" "}
             <code className="font-mono">.env.local</code> and restart the dev server. See{" "}
