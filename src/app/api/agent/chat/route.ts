@@ -53,6 +53,12 @@ export async function POST(req: Request) {
 
     return result.toUIMessageStreamResponse({
       onError: (error) => (error instanceof Error ? error.message : "The model request failed."),
+      headers: {
+        // Lets the interface show when a fallback provider answered.
+        "x-agent-provider": resolved.providerId,
+        "x-agent-model": resolved.modelId,
+        "x-agent-fallback": resolved.viaFallback ? "1" : "0",
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The model request failed.";

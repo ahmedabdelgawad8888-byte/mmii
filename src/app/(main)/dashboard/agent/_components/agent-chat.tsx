@@ -49,6 +49,7 @@ import { AgentPromptLibrary } from "./agent-prompts";
 import { type Citation, type RenderPayload, runAgentTool, type ToolRunResult } from "./agent-runtime";
 import { useAgentSettings } from "./agent-settings";
 import { AgentSettingsPanel } from "./agent-settings-panel";
+import { AgentReadyBadge, AgentSetupCard, useAgentReadiness } from "./agent-setup-card";
 import { categoryLabels, isWriteTool, summarizeToolCall, toolCategory } from "./agent-tools";
 import { useDictation, useSpeech } from "./use-voice";
 
@@ -100,6 +101,7 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
   const [pending, setPending] = useState<PendingCall[]>([]);
   const spokenRef = useRef<string | null>(null);
 
+  const readiness = useAgentReadiness();
   const dictation = useDictation(setInput);
   const speech = useSpeech();
 
@@ -144,6 +146,7 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
           modelId: settingsRef.current.modelId,
           apiKey: settingsRef.current.activeKey || undefined,
           baseURL: settingsRef.current.activeBaseUrl || undefined,
+          credentials: settingsRef.current.credentials,
           system: systemPromptRef.current,
         }),
       }),
@@ -281,10 +284,14 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
           <Badge variant="outline" className="font-mono text-xs">
             {settings.provider.name} · {settings.modelId || "no model"}
           </Badge>
-          {!settings.activeKey && (
-            <span className="text-muted-foreground text-xs">
-              Using <code className="font-mono">{settings.provider.envVar}</code> on the server
-            </span>
+          {readiness.status ? (
+            <AgentReadyBadge ready={readiness.status.ready} />
+          ) : (
+            !settings.activeKey && (
+              <span className="text-muted-foreground text-xs">
+                Using <code className="font-mono">{settings.provider.envVar}</code> on the server
+              </span>
+            )
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -335,6 +342,9 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
 
       <ScrollArea className="min-h-0 flex-1 rounded-lg border">
         <div className="flex flex-col gap-5 p-4">
+          {readiness.status && !readiness.status.anyConfigured && (
+            <AgentSetupCard onRecheck={() => void readiness.recheck()} checking={readiness.checking} />
+          )}
           {empty ? (
             <Empty className="min-h-72">
               <EmptyHeader>

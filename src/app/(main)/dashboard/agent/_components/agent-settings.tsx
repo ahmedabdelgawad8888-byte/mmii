@@ -195,6 +195,8 @@ interface AgentSettingsValue extends AgentSettings {
   removeSchedule: (id: string) => void;
   /** Key the browser holds for the active provider, if any. */
   activeKey?: string;
+  /** Every stored credential, so the server can fall through to a configured provider. */
+  credentials: Partial<Record<ProviderId, { apiKey?: string; baseURL?: string }>>;
   activeBaseUrl?: string;
   provider: ProviderDescriptor;
 }
@@ -247,6 +249,20 @@ export function AgentSettingsProvider({ children }: { children: ReactNode }) {
       hydrated,
       provider,
       activeKey: settings.apiKeys[settings.providerId],
+      credentials: Object.fromEntries(
+        providerCatalogue
+          .map((item) => [
+            item.id,
+            {
+              apiKey: settings.apiKeys[item.id] || undefined,
+              baseURL: settings.baseUrls[item.id] || item.defaultBaseUrl,
+            },
+          ])
+          .filter(([, value]) => {
+            const credential = value as { apiKey?: string; baseURL?: string };
+            return Boolean(credential.apiKey ?? credential.baseURL);
+          }),
+      ),
       activeBaseUrl: settings.baseUrls[settings.providerId] || provider.defaultBaseUrl,
       update,
       setPolicy: (category, policy) =>

@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 
-import { type ModelRequest, resolveAgentModel } from "@/lib/agent-model";
+import { type ModelRequest, providerLabel, resolveAgentModel } from "@/lib/agent-model";
 
 /**
  * Confirms a provider, model and key actually work together, using the
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, error: "Malformed request body." }, { status: 400 });
   }
 
-  const resolved = resolveAgentModel(body);
+  const resolved = resolveAgentModel({ ...body, allowFallback: body.allowFallback ?? false });
   if ("error" in resolved) {
     return Response.json({ ok: false, error: resolved.error });
   }
@@ -27,7 +27,12 @@ export async function POST(req: Request) {
     });
     return Response.json({
       ok: true,
-      message: `${body.modelId} responded.`,
+      providerId: resolved.providerId,
+      modelId: resolved.modelId,
+      viaFallback: resolved.viaFallback,
+      message: resolved.viaFallback
+        ? `${providerLabel(resolved.providerId)} answered with ${resolved.modelId}, because the selected provider has no key.`
+        : `${resolved.modelId} responded.`,
       sample: result.text.trim().slice(0, 40),
     });
   } catch (error) {
