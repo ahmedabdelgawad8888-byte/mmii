@@ -14,9 +14,16 @@
     "generate:presets": "ts-node -P tsconfig.scripts.json src/scripts/generate-theme-presets.ts"
   },
   "lint-staged": {
-    "*.{js,ts,jsx,tsx}": ["biome check --write --no-errors-on-unmatched"]
+    "*.{js,ts,jsx,tsx}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.49",
+    "@ai-sdk/gateway": "^4.0.75",
+    "@ai-sdk/google": "^4.0.64",
+    "@ai-sdk/openai": "^4.0.59",
+    "@ai-sdk/react": "^4.0.96",
     "@base-ui/react": "^1.7.0",
     "@dnd-kit/abstract": "^0.5.0",
     "@dnd-kit/helpers": "^0.5.0",
@@ -25,6 +32,7 @@
     "@hookform/resolvers": "^5.9.1",
     "@shadcn/react": "^0.3.1",
     "@tanstack/react-table": "^9.2.4",
+    "ai": "^7.0.93",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.2.5",

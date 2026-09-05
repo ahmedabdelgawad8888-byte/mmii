@@ -9,6 +9,7 @@ import {
   ListTodo,
   Lock,
   type LucideIcon,
+  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -114,6 +115,16 @@ export const sidebarItems: NavGroup[] = [
       },
       { id: "reports", title: "Management reports", url: "/dashboard/companies/reports", icon: ChartBar },
       { id: "analytics", title: "Analytics", url: "/dashboard/analytics", icon: Gauge },
+      {
+        id: "agent",
+        title: "Operating agent",
+        icon: Sparkles,
+        badge: "new",
+        subItems: [
+          { id: "agent-chat", title: "Conversation", url: "/dashboard/agent" },
+          { id: "agent-settings", title: "Agent settings", url: "/dashboard/agent/settings" },
+        ],
+      },
     ],
   },
   {

@@ -42,7 +42,7 @@ import { reconcileReminders } from "./workflow-automation";
 
 const STORAGE_KEY = "trygc:companies-workspace:v1";
 
-interface CompaniesContextValue extends CompaniesState {
+export interface CompaniesContextValue extends CompaniesState {
   addFinanceExpense: (input: Omit<FinanceExpense, "id" | "recordedAt" | "actor" | "paid">) => boolean;
   settleFinanceExpense: (id: string) => boolean;
   saveQuotationPricing: (id: string, pricing: QuotationPricing, quantity: number, expectedCloseDate: string) => boolean;
