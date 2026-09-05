@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   const resolved = resolveAgentModel(body);
   if ("error" in resolved) {
-    return Response.json({ error: resolved.error }, { status: 400 });
+    return Response.json({ error: resolved.error, ready: resolved.ready }, { status: 400 });
   }
 
   try {
@@ -54,10 +54,8 @@ export async function POST(req: Request) {
     return result.toUIMessageStreamResponse({
       onError: (error) => (error instanceof Error ? error.message : "The model request failed."),
       headers: {
-        // Lets the interface show when a fallback provider answered.
         "x-agent-provider": resolved.providerId,
         "x-agent-model": resolved.modelId,
-        "x-agent-fallback": resolved.viaFallback ? "1" : "0",
       },
     });
   } catch (error) {

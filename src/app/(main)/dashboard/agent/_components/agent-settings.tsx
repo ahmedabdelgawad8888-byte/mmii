@@ -31,7 +31,12 @@ export const providerCatalogue: ProviderDescriptor[] = [
     blurb: "One key, every provider below plus 30 more. Recommended.",
     keyUrl: "https://vercel.com/docs/ai-gateway",
     envVar: "AI_GATEWAY_API_KEY",
-    fallbackModels: ["anthropic/claude-opus-5", "anthropic/claude-sonnet-5", "openai/gpt-5.4", "google/gemini-3-pro"],
+    fallbackModels: [
+      "anthropic/claude-opus-5",
+      "anthropic/claude-sonnet-5",
+      "openai/gpt-6-astra",
+      "google/gemini-3.8-flash",
+    ],
   },
   {
     id: "anthropic",
@@ -39,7 +44,7 @@ export const providerCatalogue: ProviderDescriptor[] = [
     blurb: "Claude models, called directly.",
     keyUrl: "https://console.anthropic.com/settings/keys",
     envVar: "ANTHROPIC_API_KEY",
-    fallbackModels: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"],
+    fallbackModels: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4.5"],
   },
   {
     id: "openai",
@@ -47,7 +52,7 @@ export const providerCatalogue: ProviderDescriptor[] = [
     blurb: "GPT and o-series models, called directly.",
     keyUrl: "https://platform.openai.com/api-keys",
     envVar: "OPENAI_API_KEY",
-    fallbackModels: ["gpt-5.4", "gpt-5.4-mini", "o4-mini"],
+    fallbackModels: ["gpt-6-astra", "gpt-5.6-sol", "gpt-5", "o4-mini"],
   },
   {
     id: "google",
@@ -55,7 +60,7 @@ export const providerCatalogue: ProviderDescriptor[] = [
     blurb: "Gemini models, called directly.",
     keyUrl: "https://aistudio.google.com/apikey",
     envVar: "GOOGLE_GENERATIVE_AI_API_KEY",
-    fallbackModels: ["gemini-3-pro", "gemini-3-flash"],
+    fallbackModels: ["gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-2.5-pro"],
   },
   {
     id: "ollama",
@@ -65,7 +70,7 @@ export const providerCatalogue: ProviderDescriptor[] = [
     envVar: "OLLAMA_API_KEY",
     defaultBaseUrl: "https://ollama.com/v1",
     catalogueUrl: "https://ollama.com/v1/models",
-    fallbackModels: ["glm-5.3", "minimax-m2.7", "gpt-oss:120b", "qwen3-coder:480b"],
+    fallbackModels: ["glm-5.3", "kimi-k3", "minimax-m3", "gpt-oss:120b", "qwen3.5:397b"],
   },
   {
     id: "qwen",
@@ -84,7 +89,7 @@ export const providerCatalogue: ProviderDescriptor[] = [
     envVar: "OPENCODE_ZEN_API_KEY",
     defaultBaseUrl: "https://opencode.ai/zen/v1",
     catalogueUrl: "https://opencode.ai/zen/v1/models",
-    fallbackModels: ["claude-opus-5", "claude-sonnet-5", "gpt-5.4", "qwen3-coder"],
+    fallbackModels: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5", "big-pickle"],
   },
   {
     id: "compatible",
@@ -195,8 +200,10 @@ interface AgentSettingsValue extends AgentSettings {
   removeSchedule: (id: string) => void;
   /** Key the browser holds for the active provider, if any. */
   activeKey?: string;
-  /** Every stored credential, so the server can fall through to a configured provider. */
-  credentials: Partial<Record<ProviderId, { apiKey?: string; baseURL?: string }>>;
+  /** Provider ids this browser holds a key for. Identifiers only, never values. */
+  configuredProviderIds: ProviderId[];
+  /** Base URLs this browser has set or inherits from a preset. */
+  baseUrlMap: Partial<Record<ProviderId, string>>;
   activeBaseUrl?: string;
   provider: ProviderDescriptor;
 }
@@ -239,7 +246,16 @@ export function AgentSettingsProvider({ children }: { children: ReactNode }) {
   }, [hydrated, settings]);
 
   const update = useCallback((patch: Partial<AgentSettings>) => {
-    setSettings((current) => ({ ...current, ...patch }));
+    setSettings((current) => {
+      const next = { ...current, ...patch };
+      // A model id belongs to one provider. Carrying it across a provider
+      // change sends a name the new endpoint has never heard of.
+      if (patch.providerId && patch.providerId !== current.providerId && patch.modelId === undefined) {
+        const target = providerCatalogue.find((item) => item.id === patch.providerId);
+        next.modelId = target?.fallbackModels[0] ?? "";
+      }
+      return next;
+    });
   }, []);
 
   const value = useMemo<AgentSettingsValue>(() => {
@@ -249,19 +265,11 @@ export function AgentSettingsProvider({ children }: { children: ReactNode }) {
       hydrated,
       provider,
       activeKey: settings.apiKeys[settings.providerId],
-      credentials: Object.fromEntries(
+      configuredProviderIds: providerCatalogue.filter((item) => settings.apiKeys[item.id]).map((item) => item.id),
+      baseUrlMap: Object.fromEntries(
         providerCatalogue
-          .map((item) => [
-            item.id,
-            {
-              apiKey: settings.apiKeys[item.id] || undefined,
-              baseURL: settings.baseUrls[item.id] || item.defaultBaseUrl,
-            },
-          ])
-          .filter(([, value]) => {
-            const credential = value as { apiKey?: string; baseURL?: string };
-            return Boolean(credential.apiKey ?? credential.baseURL);
-          }),
+          .map((item) => [item.id, settings.baseUrls[item.id] || item.defaultBaseUrl])
+          .filter(([, value]) => Boolean(value)),
       ),
       activeBaseUrl: settings.baseUrls[settings.providerId] || provider.defaultBaseUrl,
       update,

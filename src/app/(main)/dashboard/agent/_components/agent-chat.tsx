@@ -51,6 +51,7 @@ import { useAgentSettings } from "./agent-settings";
 import { AgentSettingsPanel } from "./agent-settings-panel";
 import { AgentReadyBadge, AgentSetupCard, useAgentReadiness } from "./agent-setup-card";
 import { categoryLabels, isWriteTool, summarizeToolCall, toolCategory } from "./agent-tools";
+import type { useConversations } from "./use-conversations";
 import { useDictation, useSpeech } from "./use-voice";
 
 const RECORD_PATTERN = /\b(QT|INV|CMP|BRD|LED|CPN|EXP|LGR|ACT|OPS)-[A-Z0-9]+\b/g;
@@ -93,7 +94,15 @@ interface PendingCall {
   input: unknown;
 }
 
-export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => void) => void }) {
+export function AgentChat({
+  onReady,
+  history,
+  onHistoryReady,
+}: {
+  onReady?: (run: (prompt: string) => void) => void;
+  history: ReturnType<typeof useConversations>;
+  onHistoryReady?: (controls: { open: (id: string) => void; startNew: () => void }) => void;
+}) {
   const workspace = useCompanies();
   const settings = useAgentSettings();
   const router = useRouter();
@@ -146,7 +155,8 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
           modelId: settingsRef.current.modelId,
           apiKey: settingsRef.current.activeKey || undefined,
           baseURL: settingsRef.current.activeBaseUrl || undefined,
-          credentials: settingsRef.current.credentials,
+          configured: settingsRef.current.configuredProviderIds,
+          baseUrls: settingsRef.current.baseUrlMap,
           system: systemPromptRef.current,
         }),
       }),
@@ -265,6 +275,12 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
     onReady?.(submit);
   }, [onReady, submit]);
 
+  // Saved after the turn settles, so a partial stream never becomes the record.
+  useEffect(() => {
+    if (busy || !messages.length) return;
+    history.save(messages, { provider: settings.provider.name, model: settings.modelId });
+  }, [busy, messages, history, settings.provider.name, settings.modelId]);
+
   const exportMeta = useMemo(
     () => ({
       provider: settings.provider.name,
@@ -274,6 +290,27 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
     }),
     [settings.provider.name, settings.modelId, workspace.rules.activeScope, workspace.rules.baseCurrency],
   );
+
+  const openConversation = useCallback(
+    (id: string) => {
+      const conversation = history.open(id);
+      setMessages(conversation?.messages ?? []);
+      setPending([]);
+      void stop();
+    },
+    [history, setMessages, stop],
+  );
+
+  const startNewConversation = useCallback(() => {
+    history.startNew();
+    setMessages([]);
+    setPending([]);
+    void stop();
+  }, [history, setMessages, stop]);
+
+  useEffect(() => {
+    onHistoryReady?.({ open: openConversation, startNew: startNewConversation });
+  }, [onHistoryReady, openConversation, startNewConversation]);
 
   const empty = messages.length === 0;
 
@@ -321,15 +358,8 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
             </DropdownMenu>
           )}
           {messages.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setMessages([]);
-                setPending([]);
-              }}
-            >
-              <Trash2 aria-hidden="true" /> Clear
+            <Button variant="ghost" size="sm" onClick={startNewConversation}>
+              <Trash2 aria-hidden="true" /> New
             </Button>
           )}
           <AgentSettingsPanel>
@@ -342,8 +372,12 @@ export function AgentChat({ onReady }: { onReady?: (run: (prompt: string) => voi
 
       <ScrollArea className="min-h-0 flex-1 rounded-lg border">
         <div className="flex flex-col gap-5 p-4">
-          {readiness.status && !readiness.status.anyConfigured && (
-            <AgentSetupCard onRecheck={() => void readiness.recheck()} checking={readiness.checking} />
+          {readiness.status && (
+            <AgentSetupCard
+              ready={readiness.status.ready}
+              onRecheck={() => void readiness.recheck()}
+              checking={readiness.checking}
+            />
           )}
           {empty ? (
             <Empty className="min-h-72">

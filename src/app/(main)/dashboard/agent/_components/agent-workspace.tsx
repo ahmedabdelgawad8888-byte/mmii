@@ -3,8 +3,10 @@
 import { useCallback, useRef } from "react";
 
 import { AgentChat } from "./agent-chat";
+import { AgentHistory } from "./agent-history";
 import { AgentPromptManager } from "./agent-prompts";
 import { AgentToolReference } from "./agent-tool-reference";
+import { useConversations } from "./use-conversations";
 
 export function AgentWorkspace() {
   // The chat stays mounted for the life of the page so the transcript survives
@@ -14,6 +16,12 @@ export function AgentWorkspace() {
     runRef.current = run;
   }, []);
   const run = useCallback((prompt: string) => runRef.current?.(prompt), []);
+
+  const history = useConversations();
+  const controlsRef = useRef<{ open: (id: string) => void; startNew: () => void } | null>(null);
+  const registerControls = useCallback((controls: { open: (id: string) => void; startNew: () => void }) => {
+    controlsRef.current = controls;
+  }, []);
 
   return (
     // On a wide screen the page itself does not scroll: the transcript and the
@@ -29,9 +37,18 @@ export function AgentWorkspace() {
 
       <div className="grid min-h-0 flex-1 items-start gap-4 xl:grid-cols-12 xl:items-stretch">
         <div className="flex h-[70svh] min-h-96 flex-col xl:col-span-8 xl:h-full xl:min-h-0">
-          <AgentChat onReady={register} />
+          <AgentChat onReady={register} history={history} onHistoryReady={registerControls} />
         </div>
         <div className="flex flex-col gap-4 xl:col-span-4 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:pe-1">
+          <AgentHistory
+            summaries={history.summaries}
+            currentId={history.currentId}
+            onOpen={(id) => controlsRef.current?.open(id)}
+            onNew={() => controlsRef.current?.startNew()}
+            onRename={history.rename}
+            onDelete={history.remove}
+            onClearAll={history.clearAll}
+          />
           <AgentPromptManager onRun={run} />
           <AgentToolReference />
         </div>
