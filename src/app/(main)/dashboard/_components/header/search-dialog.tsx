@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Search } from "lucide-react";
 
+import { useCompanies } from "@/app/(main)/dashboard/companies/_components/companies-provider";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -36,7 +37,7 @@ function getSubItemGroup(groupLabel: string | undefined, itemTitle: string) {
   return sidebarGroupLabels.has(itemTitle) ? (groupLabel ?? "Other") : itemTitle;
 }
 
-const searchItems: SearchItem[] = sidebarItems.flatMap((group) =>
+const staticSearchItems: SearchItem[] = sidebarItems.flatMap((group) =>
   group.items.flatMap((item) => {
     if (item.subItems) {
       return item.subItems.map((sub) => ({
@@ -67,7 +68,7 @@ function getAvailableItems(items: SearchItem[]) {
   return items.filter((item) => !item.disabled && !item.url.includes("coming-soon"));
 }
 
-const recommendations = getAvailableItems(searchItems);
+const recommendations = getAvailableItems(staticSearchItems);
 
 function groupBy(items: SearchItem[]) {
   const groups = [...new Set(items.map((item) => item.group))];
@@ -81,6 +82,31 @@ export function SearchDialog() {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const router = useRouter();
+  const { activationCampaigns, companies, financeInvoices } = useCompanies();
+  const recordItems = React.useMemo<SearchItem[]>(
+    () => [
+      ...companies.map((company) => ({
+        id: company.id,
+        group: "Clients",
+        label: company.name,
+        url: `/dashboard/companies/${company.id}`,
+      })),
+      ...activationCampaigns.map((campaign) => ({
+        id: campaign.id,
+        group: "Campaigns",
+        label: campaign.name,
+        url: `/dashboard/campaigns/${campaign.id}`,
+      })),
+      ...financeInvoices.map((invoice) => ({
+        id: invoice.id,
+        group: "Invoices",
+        label: `${invoice.id} · ${invoice.currency} ${invoice.amount.toLocaleString()}`,
+        url: "/dashboard/finance/invoices",
+      })),
+    ],
+    [activationCampaigns, companies, financeInvoices],
+  );
+  const allItems = React.useMemo(() => [...staticSearchItems, ...recordItems], [recordItems]);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -148,7 +174,7 @@ export function SearchDialog() {
           <CommandInput placeholder="Search dashboards, users, and more…" value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
-            {query ? renderGroups(searchItems) : renderGroups(recommendations)}
+            {query ? renderGroups(allItems) : renderGroups([...recommendations, ...recordItems.slice(0, 8)])}
           </CommandList>
         </Command>
       </CommandDialog>
